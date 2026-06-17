@@ -1,0 +1,781 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Evaluación Riesgos - Solo lectura</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@600;700&family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body style="background-color: #f1f5f9;">
+
+  <!-- SPLASH SCREEN DE 2 SEGUNDOS -->
+  <div id="splashScreen" style="position: fixed; inset: 0; background: #0e72ed; z-index: 100000; display: flex; align-items: center; justify-content: center; flex-direction: column; transition: opacity 0.5s ease; opacity: 1;">
+    <!-- Fase 1: Logo (0s - 1s) -->
+    <div id="splashPhase1" style="display: flex; flex-direction: column; align-items: center; justify-content: center; width: 100%; height: 100%; transition: opacity 0.3s ease; opacity: 1;">
+      <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; font-family: 'Fredoka', sans-serif;">
+        <div style="display: flex; align-items: center; font-family: 'Fredoka', sans-serif;">
+          <span style="font-size: 5.5rem; font-weight: 700; color: white; line-height: 1; margin-right: -4px;">Σ</span>
+          <span style="font-size: 5.5rem; font-weight: 700; color: white; line-height: 1; letter-spacing: -1px;">fectiva</span>
+        </div>
+        <div style="font-size: 1.8rem; font-weight: 600; color: white; font-family: 'Fredoka', sans-serif; margin-top: 6px; opacity: 0.95; letter-spacing: 0.5px;">Tu financiera</div>
+      </div>
+    </div>
+    
+    <!-- Fase 2: Icono Vehículo + Texto (1s - 2s) -->
+    <div id="splashPhase2" style="position: absolute; display: none; align-items: center; justify-content: center; gap: 20px; transition: opacity 0.3s ease; opacity: 0;">
+      <svg viewBox="0 0 24 24" style="width: 72px; height: 72px; fill: white;">
+        <path d="M18.92 6.01C18.72 5.42 18.16 5 17.5 5H6.5c-.66 0-1.21.42-1.42 1.01L3 12v8c0 .55.45 1 1 1h1c.55 0 1-.45 1-1v-1h12v1c0 .55.45 1 1 1h1c.55 0 1-.45 1-1v-8l-2.08-5.99zM6.5 6h11l1.4 4H5.1L6.5 6zM5 17c-.83 0-1.5-.67-1.5-1.5S4.17 14 5 14s1.5.67 1.5 1.5S5.83 17 5 17zm14 0c-.83 0-1.5-.67-1.5-1.5s.67-1.5 1.5-1.5 1.5.67 1.5 1.5-.67 1.5-1.5 1.5z" />
+      </svg>
+      <span style="color: white; font-size: 2.8rem; font-weight: 700; font-family: 'Inter', sans-serif; letter-spacing: -0.03em; white-space: nowrap;">Crédito vehicular</span>
+    </div>
+  </div>
+
+  <!-- PANTALLA DE LOGIN -->
+  <div id="loginView" class="login-overlay hidden">
+    <div class="login-card">
+      <div style="display: flex; flex-direction: column; align-items: center; font-family: 'Fredoka', sans-serif;">
+        <div style="display: flex; align-items: center;">
+          <span style="font-size: 4rem; font-weight: 700; color: #0054D1; line-height: 1; margin-right: -4px;">Σ</span>
+          <span style="font-size: 4rem; font-weight: 700; color: #003DA5; line-height: 1; letter-spacing: -1px;">fectiva</span>
+        </div>
+        <div style="font-size: 1.3rem; font-weight: 600; color: #003DA5; margin-top: 4px; letter-spacing: 0.5px; opacity: 0.9;">Tu financiera</div>
+      </div>
+
+      <div class="login-header">
+        <h2>Iniciar Sesión</h2>
+        <p>Módulo de riesgos · Crédito vehicular</p>
+      </div>
+
+      <div class="login-form">
+        <div class="login-field">
+          <label for="loginUser">Usuario</label>
+          <input type="text" id="loginUser" placeholder="Ingrese su usuario" autocomplete="username" />
+        </div>
+        <div class="login-field">
+          <label for="loginPass">Contraseña</label>
+          <input type="password" id="loginPass" placeholder="Ingrese su contraseña" autocomplete="current-password" />
+        </div>
+      </div>
+
+      <div class="login-actions">
+        <button type="button" id="btnLoginSubmit" class="btn primary">Iniciar sesión</button>
+        <button type="button" id="btnLoginClear" class="btn secondary" style="background: #94a3b8;">Limpiar</button>
+      </div>
+
+      <div class="login-footer">
+        <a href="#" id="forgotPasswordBtn">¿Olvidó su contraseña?</a>
+      </div>
+    </div>
+  </div>
+
+  <!-- POPUP PERSONALIZADO DE LOGIN -->
+  <div id="loginAlertModal" class="success-overlay hidden" role="dialog" aria-modal="true" style="z-index: 100000; background: rgba(15, 23, 42, 0.6); backdrop-filter: blur(4px); display: flex; align-items: center; justify-content: center; position: fixed; inset: 0;">
+    <div class="success-dialog">
+      <div id="loginAlertIcon" class="success-dialog-icon">⚠</div>
+      <h2 id="loginAlertTitle">Error</h2>
+      <p id="loginAlertMessage">Usuario o contraseña mal ingresados o no existen</p>
+      <button type="button" id="closeLoginAlertModal" class="btn primary">Aceptar</button>
+    </div>
+  </div>
+
+  <!-- App Main Header -->
+  <header class="app-header hidden">
+    <div class="header-left">
+      <div class="brand-logo-wrapper">
+        <!-- SVG Brand logo based on brand layout -->
+        <svg class="brand-logo-icon" viewBox="0 0 32 32" xmlns="http://www.w3.org/2000/svg">
+          <path d="M4 6h24v4H4V6zm0 8h24v4H4v-4zm0 8h16v4H4v-4z" />
+        </svg>
+        <div class="brand-container">
+          <span class="brand-name">Efectiva</span>
+          <span class="brand-subtitle">Tu financiera</span>
+        </div>
+      </div>
+      <span class="header-divider">|</span>
+      <h1 class="app-title">Evaluación Riesgos</h1>
+    </div>
+
+    <div class="header-right">
+      <div class="analista-badge">Analista Riesgos</div>
+      
+      <div class="user-profile">
+        <div class="profile-avatar">
+          <svg viewBox="0 0 24 24">
+            <path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/>
+          </svg>
+        </div>
+        <span>Hola, Analista</span>
+        <svg class="chevron-down-icon" viewBox="0 0 24 24">
+          <path d="M7 10l5 5 5-5z"/>
+        </svg>
+      </div>
+
+      <div class="notification-bell">
+        <svg viewBox="0 0 24 24">
+          <path d="M12 22c1.1 0 2-.9 2-2h-4c0 1.1.89 2 2 2zm6-6v-5c0-3.07-1.64-5.64-4.5-6.32V4c0-.83-.67-1.5-1.5-1.5s-1.5.67-1.5 1.5v.68C7.63 5.36 6 7.92 6 11v5l-2 2v1h16v-1l-2-2z"/>
+        </svg>
+        <span class="notification-badge">3</span>
+      </div>
+    </div>
+  </header>
+
+  <!-- Dashboard Container -->
+  <main id="bandeja-view" class="dashboard-container hidden">
+    
+    <!-- Module Header Title Section -->
+    <div class="module-header">
+      <button class="menu-icon-btn" aria-label="Abrir Menú">
+        <svg viewBox="0 0 24 24">
+          <path d="M3 18h18v-2H3v2zm0-5h18v-2H3v2zm0-7v2h18V6H3z"/>
+        </svg>
+      </button>
+      <h2 class="module-title">Bandeja</h2>
+      <div class="module-switch">
+        <button type="button" class="module-switch-btn active" onclick="showModule('bandeja')">Bandeja</button>
+        <button type="button" class="module-switch-btn" onclick="showModule('solicitudes')">Solicitudes</button>
+      </div>
+    </div>
+
+    <!-- Search Section (BÚSQUEDA) -->
+    <section class="search-card" aria-label="Búsqueda de solicitudes">
+      <h3 class="search-section-title">Búsqueda</h3>
+      <div class="search-grid">
+        
+        <!-- Solicitud text filter -->
+        <div class="search-field grid-item-span-1">
+          <label for="filter-solicitud">Solicitud:</label>
+          <input type="text" id="filter-solicitud" class="form-control" placeholder="Buscar solicitud...">
+        </div>
+
+        <!-- Tipo Documento select filter -->
+        <div class="search-field grid-item-span-1">
+          <label for="filter-tipo-documento">Tipo Documento:</label>
+          <select id="filter-tipo-documento" class="form-control">
+            <option>Seleccionar</option>
+            <option value="DNI">DNI</option>
+            <option value="RUC">RUC</option>
+            <option value="CE">CE</option>
+            <option value="Pasaporte">Pasaporte</option>
+          </select>
+        </div>
+
+        <!-- Documento text filter -->
+        <div class="search-field grid-item-span-1">
+          <label for="filter-documento">N° Documento:</label>
+          <input type="text" id="filter-documento" class="form-control" placeholder="Buscar documento...">
+        </div>
+
+        <!-- Cliente text filter -->
+        <div class="search-field grid-item-span-1">
+          <label for="filter-cliente">Cliente:</label>
+          <input type="text" id="filter-cliente" class="form-control" placeholder="Buscar cliente...">
+        </div>
+
+        <!-- Concesionario select filter -->
+        <div class="search-field grid-item-span-1">
+          <label for="filter-concesionario">Concesionario:</label>
+          <select id="filter-concesionario" class="form-control">
+            <option>Seleccionar</option>
+          </select>
+        </div>
+
+        <!-- Tienda select filter -->
+        <div class="search-field grid-item-span-1">
+          <label for="filter-tienda">Tienda:</label>
+          <select id="filter-tienda" class="form-control">
+            <option>Seleccionar</option>
+          </select>
+        </div>
+
+        <!-- Ejecutivo text filter -->
+        <div class="search-field grid-item-span-1">
+          <label for="filter-ejecutivo">Usuario (Ejecutivo):</label>
+          <input type="text" id="filter-ejecutivo" class="form-control" placeholder="Buscar ejecutivo...">
+        </div>
+
+
+
+        <!-- Carretera select filter -->
+        <div class="search-field grid-item-span-1">
+          <label for="filter-carretera">Carretera:</label>
+          <select id="filter-carretera" class="form-control">
+            <option>Seleccionar</option>
+          </select>
+        </div>
+
+        <!-- Estado select filter -->
+        <div class="search-field grid-item-span-1">
+          <label for="filter-estado">Estado:</label>
+          <select id="filter-estado" class="form-control">
+            <option>Seleccionar</option>
+          </select>
+        </div>
+
+        <!-- Fecha Desde date filter -->
+        <div class="search-field grid-item-span-2">
+          <label for="filter-fecha-desde">Fecha Desde:</label>
+          <input type="date" id="filter-fecha-desde" class="form-control">
+        </div>
+
+        <!-- Fecha Hasta date filter -->
+        <div class="search-field grid-item-span-2">
+          <label for="filter-fecha-hasta">N° Fecha Hasta:</label>
+          <input type="date" id="filter-fecha-hasta" class="form-control">
+        </div>
+
+        <!-- Search Action Buttons -->
+        <div class="search-actions-container">
+          <button id="btn-limpiar" class="btn btn-secondary">Limpiar</button>
+        </div>
+
+      </div>
+    </section>
+
+    <!-- Table Results Section -->
+    <section class="results-card" aria-label="Resultados de búsqueda">
+      <div class="table-responsive">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th>Número solicitud</th>
+              <th>Tipo documento</th>
+              <th>Número documento</th>
+              <th>Cliente</th>
+              <th>Concesionario</th>
+              <th>Sucursal</th>
+              <th>Ejecutivo</th>
+              <th>Fecha ingreso Riesgos</th>
+              <th>
+                <button id="sort-sla-btn" class="sla-header-btn" title="Ordenar por SLA">
+                  SLA
+                  <svg viewBox="0 0 24 24">
+                    <path d="M7 10l5 5 5-5z"/>
+                  </svg>
+                </button>
+              </th>
+              <th>Etapa</th>
+              <th>Estado</th>
+              <th>Acciones</th>
+            </tr>
+          </thead>
+          <tbody id="table-body">
+            <!-- Dynamic rows will be inserted here by script.js -->
+          </tbody>
+        </table>
+      </div>
+
+      <!-- Pagination and Total Badges Footer -->
+      <footer class="table-footer">
+        <div class="pagination">
+          <button class="page-btn" aria-label="Anterior" disabled>
+            <svg viewBox="0 0 24 24">
+              <path d="M15.41 7.41L14 6l-6 6 6 6 1.41-1.41L10.83 12z"/>
+            </svg>
+          </button>
+          <button class="page-btn active">1</button>
+          <button class="page-btn" aria-label="Siguiente" disabled>
+            <svg viewBox="0 0 24 24">
+              <path d="M10 6L8.59 7.41 13.17 12l-4.58 4.59L10 18l6-6z"/>
+            </svg>
+          </button>
+        </div>
+        
+        <div class="total-badge-container">
+          <span>Total</span>
+          <span id="total-results-count" class="total-badge">0</span>
+        </div>
+      </footer>
+    </section>
+
+  </main>
+
+
+  <!-- Dashboard Container: Solicitudes por tomar -->
+  <main id="solicitudes-view" class="dashboard-container hidden">
+    <div class="module-header">
+      <button class="menu-icon-btn" aria-label="Abrir Menú">
+        <svg viewBox="0 0 24 24">
+          <path d="M3 18h18v-2H3v2zm0-5h18v-2H3v2zm0-7v2h18V6H3z"/>
+        </svg>
+      </button>
+      <h2 class="module-title">Solicitudes</h2>
+      <div class="module-switch">
+        <button type="button" class="module-switch-btn" onclick="showModule('bandeja')">Bandeja</button>
+        <button type="button" class="module-switch-btn active" onclick="showModule('solicitudes')">Solicitudes</button>
+      </div>
+    </div>
+
+    <section class="search-card" aria-label="Búsqueda de solicitudes pendientes por tomar">
+      <h3 class="search-section-title">Búsqueda</h3>
+      <div class="search-grid">
+        <div class="search-field grid-item-span-1">
+          <label for="sol-filter-solicitud">Solicitud:</label>
+          <input type="text" id="sol-filter-solicitud" class="form-control" placeholder="Buscar solicitud...">
+        </div>
+        <div class="search-field grid-item-span-1">
+          <label for="sol-filter-tipo-documento">Tipo Documento:</label>
+          <select id="sol-filter-tipo-documento" class="form-control">
+            <option>Seleccionar</option>
+            <option value="DNI">DNI</option>
+            <option value="RUC">RUC</option>
+            <option value="CE">CE</option>
+            <option value="Pasaporte">Pasaporte</option>
+          </select>
+        </div>
+        <div class="search-field grid-item-span-1">
+          <label for="sol-filter-documento">N° Documento:</label>
+          <input type="text" id="sol-filter-documento" class="form-control" placeholder="Buscar documento...">
+        </div>
+        <div class="search-field grid-item-span-1">
+          <label for="sol-filter-cliente">Cliente:</label>
+          <input type="text" id="sol-filter-cliente" class="form-control" placeholder="Buscar cliente...">
+        </div>
+        <div class="search-field grid-item-span-1">
+          <label for="sol-filter-concesionario">Concesionario:</label>
+          <select id="sol-filter-concesionario" class="form-control"><option>Seleccionar</option></select>
+        </div>
+        <div class="search-field grid-item-span-1">
+          <label for="sol-filter-tienda">Tienda:</label>
+          <select id="sol-filter-tienda" class="form-control"><option>Seleccionar</option></select>
+        </div>
+        <div class="search-field grid-item-span-1">
+          <label for="sol-filter-ejecutivo">Usuario (Ejecutivo):</label>
+          <input type="text" id="sol-filter-ejecutivo" class="form-control" placeholder="Buscar ejecutivo...">
+        </div>
+        <div class="search-field grid-item-span-1">
+          <label for="sol-filter-carretera">Carretera:</label>
+          <select id="sol-filter-carretera" class="form-control"><option>Seleccionar</option></select>
+        </div>
+        <div class="search-field grid-item-span-2">
+          <label for="sol-filter-fecha-desde">Fecha Desde:</label>
+          <input type="date" id="sol-filter-fecha-desde" class="form-control">
+        </div>
+        <div class="search-field grid-item-span-2">
+          <label for="sol-filter-fecha-hasta">Fecha Hasta:</label>
+          <input type="date" id="sol-filter-fecha-hasta" class="form-control">
+        </div>
+        <div class="search-actions-container">
+          <button id="sol-btn-limpiar" class="btn btn-secondary">Limpiar</button>
+        </div>
+      </div>
+    </section>
+
+    <section class="results-card" aria-label="Resultados de solicitudes pendientes">
+      <div class="table-responsive">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th>Número solicitud</th>
+              <th>Tipo documento</th>
+              <th>Número documento</th>
+              <th>Cliente</th>
+              <th>Concesionario</th>
+              <th>Sucursal</th>
+              <th>Ejecutivo</th>
+              <th>Fecha ingreso Riesgos</th>
+              <th>Etapa</th>
+              <th>Acciones</th>
+            </tr>
+          </thead>
+          <tbody id="solicitudes-table-body"></tbody>
+        </table>
+      </div>
+      <footer class="table-footer">
+        <div class="pagination">
+          <button class="page-btn" aria-label="Anterior" disabled><svg viewBox="0 0 24 24"><path d="M15.41 7.41L14 6l-6 6 6 6 1.41-1.41L10.83 12z"/></svg></button>
+          <button class="page-btn active">1</button>
+          <button class="page-btn" aria-label="Siguiente" disabled><svg viewBox="0 0 24 24"><path d="M10 6L8.59 7.41 13.17 12l-4.58 4.59L10 18l6-6z"/></svg></button>
+        </div>
+        <div class="total-badge-container">
+          <span>Total</span>
+          <span id="sol-total-results-count" class="total-badge">0</span>
+        </div>
+      </footer>
+    </section>
+  </main>
+
+  <!-- Dashboard Container (Revisar View) -->
+  <main id="revisar-view" class="dashboard-container hidden" style="gap: 1rem; max-width: 1600px;">
+    
+    <!-- Top Metadata Bar -->
+    <div style="display: flex; justify-content: space-between; align-items: center; background-color: #ffffff; padding: 0.65rem 1.25rem; border-radius: 8px; border: 1px solid var(--border-color); margin-bottom: 0.25rem;">
+      <div style="display: flex; align-items: center; gap: 0.75rem;">
+        <button class="menu-icon-btn" onclick="volverABandeja()" title="Volver a Bandeja" style="width: 32px; height: 32px;">
+          <svg viewBox="0 0 24 24" style="transform: rotate(180deg); width: 16px; height: 16px;">
+            <path d="M10 6L8.59 7.41 13.17 12l-4.58 4.59L10 18l6-6z"/>
+          </svg>
+        </button>
+        <div style="display: flex; align-items: center; gap: 0.5rem;">
+          <span style="font-size: 1.1rem; font-weight: 800; color: #0b4ec2; letter-spacing: -0.3px;">Evaluación Riesgos</span>
+        </div>
+      </div>
+      <div style="display: flex; align-items: center; gap: 1rem;">
+        <span style="font-size: 0.75rem; font-weight: 700; color: var(--text-dark);">Carretera: <strong id="header-carretera" style="color: #6d28d9; font-size: 0.8rem;">-</strong></span>
+        <span style="font-size: 0.75rem; font-weight: 700; color: var(--text-dark);">ID Solicitud: <strong id="header-solicitud-id" style="color: #0b4ec2; font-size: 0.8rem;">-</strong></span>
+        <span id="header-status-badge" style="background-color: #fff7ed; color: #ea580c; border: 1px solid #fed7aa; padding: 0.25rem 0.65rem; border-radius: 6px; font-size: 0.65rem; font-weight: 800; text-transform: uppercase;">EN EVALUACIÓN RIESGOS</span>
+      </div>
+    </div>
+
+    <!-- Selectable Tabs Nav Bar -->
+    <div class="tabs-nav-grid" aria-label="Pestañas de evaluación de riesgos">
+      <button id="tab-btn-cliente" class="tab-nav-btn active" onclick="switchTab('cliente')">
+        <span class="tab-nav-num">01</span>
+        <span class="tab-nav-title">Datos de Cliente</span>
+        <span class="tab-nav-desc">Información personal</span>
+      </button>
+      <button id="tab-btn-comerciales" class="tab-nav-btn" onclick="switchTab('comerciales')">
+        <span class="tab-nav-num">02</span>
+        <span class="tab-nav-title">Datos Comerciales</span>
+        <span class="tab-nav-desc">Concesionario y campaña</span>
+      </button>
+      <button id="tab-btn-vehiculo" class="tab-nav-btn" onclick="switchTab('vehiculo')">
+        <span class="tab-nav-num">03</span>
+        <span class="tab-nav-title">Datos de Vehículo</span>
+        <span class="tab-nav-desc">Unidad y propiedad</span>
+      </button>
+      <button id="tab-btn-credito" class="tab-nav-btn" onclick="switchTab('credito')">
+        <span class="tab-nav-num">04</span>
+        <span class="tab-nav-title">Crédito y Simulación</span>
+        <span class="tab-nav-desc">Condiciones financieras</span>
+      </button>
+      <button id="tab-btn-gastos" class="tab-nav-btn" onclick="switchTab('gastos')">
+        <span class="tab-nav-num">05</span>
+        <span class="tab-nav-title">Gastos y GPS</span>
+        <span class="tab-nav-desc">Servicios y otros cargos</span>
+      </button>
+      <button id="tab-btn-seguros" class="tab-nav-btn" onclick="switchTab('seguros')">
+        <span class="tab-nav-num">06</span>
+        <span class="tab-nav-title">Seguros</span>
+        <span class="tab-nav-desc">Vehicular y desgravamen</span>
+      </button>
+      <button id="tab-btn-laboral" class="tab-nav-btn" onclick="switchTab('laboral')">
+        <span class="tab-nav-num">07</span>
+        <span class="tab-nav-title">Datos Laborales</span>
+        <span class="tab-nav-desc">Empresa e ingresos</span>
+      </button>
+      <button id="tab-btn-conyuge" class="tab-nav-btn" onclick="switchTab('conyuge')">
+        <span class="tab-nav-num">08</span>
+        <span class="tab-nav-title">Datos de Cónyuge</span>
+        <span class="tab-nav-desc">Información de pareja</span>
+      </button>
+    </div>
+
+    <!-- Split Grid: Selected Tab Content & Tracking Historial -->
+    <div class="tab-layout-grid" style="display: grid; grid-template-columns: 3.2fr 1fr; gap: 1rem; align-items: stretch; margin-bottom: 0.25rem;">
+      
+      <!-- Left side: Active Tab Display Card -->
+      <div id="tab-content-area" class="eval-card" style="min-height: 480px; justify-content: flex-start;">
+        <!-- Filled dynamically by switchTab() in revisar.js -->
+      </div>
+
+      <!-- Right side: Tracking Timeline -->
+      <section class="eval-card" style="justify-content: flex-start;">
+        <h3 style="font-size: 0.85rem; font-weight: 800; color: #0b4ec2; border-bottom: 1.5px solid #eff6ff; padding-bottom: 0.5rem; margin-bottom: 1rem;">
+          Tracking historial
+        </h3>
+        <div id="tracking-timeline" style="display: flex; flex-direction: column; gap: 1.1rem; padding-left: 0.25rem;">
+          <!-- Filled dynamically by renderTimeline() in revisar.js -->
+        </div>
+      </section>
+
+    </div>
+
+    <!-- Global Checklist Card - solo lectura -->
+    <section class="eval-card" style="margin-bottom: 0.75rem;">
+      <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1.5px solid #eff6ff; padding-bottom: 0.35rem; margin-bottom: 0.5rem;">
+        <h3 class="eval-card-title" style="border: none; margin: 0; padding: 0;">Checklist - Documentos de Evaluación</h3>
+        <div style="display: flex; align-items: center; gap: 0.75rem;">
+          <span class="page-btn active" style="font-size: 0.62rem; height: 20px; border-radius: 4px; padding: 0 0.5rem; width: auto; cursor: pointer;">DOCUMENTACIÓN</span>
+          <span id="checklist-carretera" style="font-size: 0.62rem; height: 20px; border-radius: 4px; padding: 0 0.5rem; display: flex; align-items: center; background-color: #f3e8ff; color: #6d28d9; font-weight: 700; border: 1px solid #c084fc;">Carretera: -</span>
+        </div>
+      </div>
+
+      <table class="checklist-table">
+        <thead>
+          <tr>
+            <th>N°</th>
+            <th>Documento requerido</th>
+            <th>Archivo</th>
+            <th>Acciones</th>
+          </tr>
+        </thead>
+        <tbody id="checklist-body">
+          <!-- Loaded dynamically -->
+        </tbody>
+      </table>
+
+
+    </section>
+
+    <!-- Row 4 & 5: Decisión Panel -->
+    <div id="decision-panel" style="display: flex; flex-direction: column; gap: 0.75rem; background-color: #ffffff; padding: 1.25rem; border-radius: 8px; border: 1px solid var(--border-color);">
+      
+      <!-- 10. COMENTARIO -->
+      <div class="search-field" style="display: flex; flex-direction: column; gap: 0.5rem; width: 100%;">
+        <label style="font-size: 0.72rem; font-weight: 700; color: var(--text-dark); text-transform: uppercase; margin-bottom: 0.25rem;">
+          10. Comentario <span style="color: #dc2626;">*</span>
+        </label>
+        
+        <!-- Casillas (Boxes) of existing comments -->
+        <div id="comments-history-list" style="display: flex; flex-direction: column; gap: 0.5rem; width: 100%; margin-bottom: 0.25rem;">
+          <!-- Populated dynamically -->
+        </div>
+      </div>
+
+      <!-- 11. DECISIÓN DE RIESGOS -->
+      <div id="decision-actions-section" style="margin-top: 0.25rem;">
+        <label style="font-size: 0.72rem; font-weight: 700; color: var(--text-dark); text-transform: uppercase; display: block; margin-bottom: 0.45rem;">
+          11. Decisión de Riesgos
+        </label>
+        
+        <div class="decision-buttons-grid">
+          <button id="btn-aprobar" class="btn-decision btn-decision-aprobar">
+            <svg viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/></svg>
+            Aprobar
+          </button>
+          
+          <button id="btn-observar" class="btn-decision btn-decision-observar">
+            <svg viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-6h2v6zm0-8h-2V7h2v2z"/></svg>
+            Observar
+          </button>
+          
+          <button id="btn-rechazar" class="btn-decision btn-decision-rechazar">
+            <svg viewBox="0 0 24 24"><path d="M12 2C6.47 2 2 6.47 2 12s4.47 10 10 10 10-4.47 10-10S17.53 2 12 2zm5 13.59L15.59 17 12 13.41 8.41 17 7 15.59 10.59 12 7 8.41 8.41 7 12 10.59 15.59 7 17 8.41 13.41 12 17 15.59z"/></svg>
+            Rechazar
+          </button>
+          
+
+          
+          <button id="btn-escalar" class="btn-decision btn-decision-escalar">
+            <svg viewBox="0 0 24 24"><path d="M9 8c1.66 0 3-1.34 3-3s-1.34-3-3-3-3 1.34-3 3 1.34 3 3 3zm0 2c-2.33 0-7 1.17-7 3.5V16h14v-2.5c0-2.33-4.67-3.5-7-3.5zm8 3.7c.92.67 1.5 1.52 1.5 2.55V18h3v-1.75c0-1.79-3.5-2.69-4.5-2.55zM17 9c1.66 0 3-1.34 3-3s-1.34-3-3-3c-.41 0-.79.09-1.15.24C16.5 3.9 17 4.9 17 6s-.5 2.1-1.15 2.76c.36.15.74.24 1.15.24z"/></svg>
+            Escalar a jefe
+          </button>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- Centered Regresar button -->
+    <div style="display: flex; justify-content: center; margin-top: 0.5rem; margin-bottom: 1.5rem;">
+      <button class="btn btn-secondary" onclick="volverABandeja()" style="border-color: #cbd5e1; background-color: #ffffff; color: var(--text-dark); text-transform: none; font-weight: 600; width: 150px;">
+        REGRESAR
+      </button>
+    </div>
+
+  </main>
+
+  <!-- Detail Information Modal Overlay -->
+
+  <!-- Popup de confirmación para tomar solicitud -->
+  <div id="tomar-confirm-modal" class="modal-overlay">
+    <div class="modal-card tomar-modal-card">
+      <header class="modal-header">
+        <h3 class="modal-title">Confirmar toma de solicitud</h3>
+        <button class="modal-close-btn" aria-label="Cerrar popup" onclick="closeTomarModal()">
+          <svg viewBox="0 0 24 24"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </header>
+      <div class="modal-body tomar-modal-body">
+        <div class="tomar-icon">✓</div>
+        <p id="tomar-confirm-text">¿Desea tomar esta solicitud para su bandeja?</p>
+        <small>Al confirmar, el caso será asignado al analista de sesión y dejará de mostrarse en Solicitudes.</small>
+      </div>
+      <footer class="modal-footer">
+        <button class="btn btn-secondary" onclick="closeTomarModal()">Cancelar</button>
+        <button id="btn-confirmar-tomar" class="btn btn-primary">Confirmar</button>
+      </footer>
+    </div>
+  </div>
+
+  <div id="details-modal" class="modal-overlay">
+    <div class="modal-card">
+      <header class="modal-header">
+        <h3 class="modal-title">Detalle de Solicitud</h3>
+        <button id="modal-close" class="modal-close-btn" aria-label="Cerrar modal">
+          <svg viewBox="0 0 24 24">
+            <path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/>
+          </svg>
+        </button>
+      </header>
+      <div id="modal-details-body" class="modal-body">
+        <!-- Loaded dynamically on click of 'Revisar' -->
+      </div>
+      <footer class="modal-footer">
+        <button class="btn btn-primary" onclick="closeDetailModal()">Cerrar</button>
+      </footer>
+    </div>
+  </div>
+
+  <!-- PDF View Modal -->
+  <div id="pdf-modal" class="modal-overlay">
+    <div class="modal-card" style="max-width: 900px; width: 90%; height: 85%; display: flex; flex-direction: column;">
+      <div class="modal-header">
+        <h3 id="pdf-modal-title" class="modal-title">Vista de Documento</h3>
+        <button class="modal-close-btn" onclick="closePdfModal()">
+          <svg viewBox="0 0 24 24"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </div>
+      <div class="modal-body" style="flex: 1; padding: 0; display: flex; flex-direction: column; height: 100%;">
+        <iframe id="pdf-iframe" src="" style="width: 100%; height: 100%; border: none;"></iframe>
+      </div>
+    </div>
+  </div>
+
+  <!-- Timeline Detail Modal -->
+  <div id="timeline-modal" class="modal-overlay">
+    <div class="modal-card" style="max-width: 500px; width: 90%;">
+      <div class="modal-header" style="background-color: #f8fafc;">
+        <h3 id="timeline-modal-title" class="modal-title" style="font-size: 0.85rem; font-weight: 800; color: #0b4ec2;">Detalle de Historial</h3>
+        <button class="modal-close-btn" onclick="closeTimelineModal()">
+          <svg viewBox="0 0 24 24"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </div>
+      <div class="modal-body" style="padding: 1.25rem; font-size: 0.75rem;">
+        <div style="display: flex; flex-direction: column; gap: 0.75rem;">
+          <div style="display: flex; justify-content: space-between; border-bottom: 1px solid #eff6ff; padding-bottom: 0.35rem;">
+            <span style="font-weight: 700; color: var(--text-muted);">Usuario:</span>
+            <span id="timeline-modal-user" style="font-weight: 600; color: var(--text-dark);">-</span>
+          </div>
+          <div style="display: flex; justify-content: space-between; border-bottom: 1px solid #eff6ff; padding-bottom: 0.35rem;">
+            <span style="font-weight: 700; color: var(--text-muted);">Fecha:</span>
+            <span id="timeline-modal-date" style="font-weight: 600; color: var(--text-dark);">-</span>
+          </div>
+          <div style="display: flex; justify-content: space-between; border-bottom: 1px solid #eff6ff; padding-bottom: 0.35rem;">
+            <span style="font-weight: 700; color: var(--text-muted);">Acción:</span>
+            <span id="timeline-modal-action" style="font-weight: 700;">-</span>
+          </div>
+          <div style="display: flex; flex-direction: column; gap: 0.25rem;">
+            <span style="font-weight: 700; color: var(--text-muted);">Comentarios / Detalle:</span>
+            <div id="timeline-modal-comments" style="background-color: #f8fafc; border: 1px solid var(--border-color); padding: 0.65rem; border-radius: 6px; color: var(--text-dark); line-height: 1.4; white-space: pre-wrap;">-</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal Observar -->
+  <div id="modal-observar" class="modal-overlay">
+    <div class="modal-card" style="max-width: 500px; width: 90%;">
+      <div class="modal-header">
+        <h3 class="modal-title" style="font-size: 0.85rem; font-weight: 800; color: #0b4ec2;">Observar Solicitud</h3>
+        <button class="modal-close-btn" onclick="closeDocModal('modal-observar')">
+          <svg viewBox="0 0 24 24" style="width: 14px; height: 14px;"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </div>
+      <div class="modal-body" style="padding: 1.25rem; font-size: 0.75rem; display: flex; flex-direction: column; gap: 0.75rem;">
+        <div class="search-field">
+          <label for="obs-motivo" style="font-weight: 700; margin-bottom: 0.25rem;">Motivo de la Observación *</label>
+          <select id="obs-motivo" class="form-control" style="height: 32px; font-size: 0.75rem;">
+            <option value="">Seleccionar motivo...</option>
+            <option value="RM001: Solicitud incompleta o mal registrada">RM001: Solicitud incompleta o mal registrada</option>
+            <option value="RM002: Documentación incompleta o mal registrada">RM002: Documentación incompleta o mal registrada</option>
+            <option value="RM003: Documentación inconsistente">RM003: Documentación inconsistente</option>
+            <option value="RM004: Ingresos sin sustento">RM004: Ingresos sin sustento</option>
+            <option value="RM005: Sin capacidad de pago">RM005: Sin capacidad de pago</option>
+            <option value="RM006: Cuota inicial insuficiente">RM006: Cuota inicial insuficiente</option>
+            <option value="RM007: No cumple política vigente">RM007: No cumple política vigente</option>
+            <option value="RM008: Cliente en base negativa">RM008: Cliente en base negativa</option>
+            <option value="RM009: Segmento no elegible">RM009: Segmento no elegible</option>
+            <option value="RM010: Continuidad laboral insuficiente">RM010: Continuidad laboral insuficiente</option>
+            <option value="RM011: Producto incorrecto">RM011: Producto incorrecto</option>
+            <option value="RM012: Solicitud duplicada">RM012: Solicitud duplicada</option>
+            <option value="RM013: Información laboral incompleta">RM013: Información laboral incompleta</option>
+            <option value="RM014: Información del cónyuge incompleta">RM014: Información del cónyuge incompleta</option>
+            <option value="RM015: Precio del vehículo inconsistente">RM015: Precio del vehículo inconsistente</option>
+            <option value="RM016: Falta aprobación de excepción CMA">RM016: Falta aprobación de excepción CMA</option>
+            <option value="RM017: Falta aprobación por cliente extranjero">RM017: Falta aprobación por cliente extranjero</option>
+            <option value="RM018: DNI no cargado, ilegible o inválido">RM018: DNI no cargado, ilegible o inválido</option>
+            <option value="RM019: Zona o ubicación no permitida">RM019: Zona o ubicación no permitida</option>
+            <option value="RM020: Actividad económica u ocupación no permitida">RM020: Actividad económica u ocupación no permitida</option>
+          </select>
+        </div>
+        <div class="search-field">
+          <label for="obs-comentario" style="font-weight: 700; margin-bottom: 0.25rem;">Comentario *</label>
+          <textarea id="obs-comentario" class="form-control" style="height: 80px; padding: 0.5rem; resize: none; font-size: 0.75rem;" placeholder="Ingrese comentarios obligatorios..."></textarea>
+        </div>
+      </div>
+      <div class="modal-footer" style="padding: 1rem 1.5rem; display: flex; justify-content: flex-end; gap: 0.75rem; border-top: 1px solid var(--border-color); background-color: #f8fafc;">
+        <button class="btn btn-secondary" onclick="closeDocModal('modal-observar')" style="height: 32px; padding: 0 1rem; font-size: 0.7rem; text-transform: none; border-color: #cbd5e1; background-color: #ffffff; color: var(--text-dark);">Cancelar</button>
+        <button class="btn" onclick="submitObservar()" style="background-color: #ea580c; color: white; height: 32px; padding: 0 1rem; font-size: 0.7rem; border: none; text-transform: none;">Confirmar Observación</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal Rechazar -->
+  <div id="modal-rechazar" class="modal-overlay">
+    <div class="modal-card" style="max-width: 500px; width: 90%;">
+      <div class="modal-header">
+        <h3 class="modal-title" style="font-size: 0.85rem; font-weight: 800; color: #0b4ec2;">Rechazar Solicitud</h3>
+        <button class="modal-close-btn" onclick="closeDocModal('modal-rechazar')">
+          <svg viewBox="0 0 24 24" style="width: 14px; height: 14px;"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </div>
+      <div class="modal-body" style="padding: 1.25rem; font-size: 0.75rem; display: flex; flex-direction: column; gap: 0.75rem;">
+        <div class="search-field">
+          <label for="rechazo-motivo" style="font-weight: 700; margin-bottom: 0.25rem;">Motivo del Rechazo *</label>
+          <select id="rechazo-motivo" class="form-control" style="height: 32px; font-size: 0.75rem;">
+            <option value="">Seleccionar motivo...</option>
+            <option value="RM001: Solicitud incompleta o mal registrada">RM001: Solicitud incompleta o mal registrada</option>
+            <option value="RM002: Documentación incompleta o mal registrada">RM002: Documentación incompleta o mal registrada</option>
+            <option value="RM003: Documentación inconsistente">RM003: Documentación inconsistente</option>
+            <option value="RM004: Ingresos sin sustento">RM004: Ingresos sin sustento</option>
+            <option value="RM005: Sin capacidad de pago">RM005: Sin capacidad de pago</option>
+            <option value="RM006: Cuota inicial insuficiente">RM006: Cuota inicial insuficiente</option>
+            <option value="RM007: No cumple política vigente">RM007: No cumple política vigente</option>
+            <option value="RM008: Cliente en base negativa">RM008: Cliente en base negativa</option>
+            <option value="RM009: Segmento no elegible">RM009: Segmento no elegible</option>
+            <option value="RM010: Continuidad laboral insuficiente">RM010: Continuidad laboral insuficiente</option>
+            <option value="RM011: Producto incorrecto">RM011: Producto incorrecto</option>
+            <option value="RM012: Solicitud duplicada">RM012: Solicitud duplicada</option>
+            <option value="RM013: Información laboral incompleta">RM013: Información laboral incompleta</option>
+            <option value="RM014: Información del cónyuge incompleta">RM014: Información del cónyuge incompleta</option>
+            <option value="RM015: Precio del vehículo inconsistente">RM015: Precio del vehículo inconsistente</option>
+            <option value="RM016: Falta aprobación de excepción CMA">RM016: Falta aprobación de excepción CMA</option>
+            <option value="RM017: Falta aprobación por cliente extranjero">RM017: Falta aprobación por cliente extranjero</option>
+            <option value="RM018: DNI no cargado, ilegible o inválido">RM018: DNI no cargado, ilegible o inválido</option>
+            <option value="RM019: Zona o ubicación no permitida">RM019: Zona o ubicación no permitida</option>
+            <option value="RM020: Actividad económica u ocupación no permitida">RM020: Actividad económica u ocupación no permitida</option>
+          </select>
+        </div>
+        <div class="search-field">
+          <label for="rechazo-comentario" style="font-weight: 700; margin-bottom: 0.25rem;">Comentario *</label>
+          <textarea id="rechazo-comentario" class="form-control" style="height: 80px; padding: 0.5rem; resize: none; font-size: 0.75rem;" placeholder="Ingrese comentarios obligatorios..."></textarea>
+        </div>
+      </div>
+      <div class="modal-footer" style="padding: 1rem 1.5rem; display: flex; justify-content: flex-end; gap: 0.75rem; border-top: 1px solid var(--border-color); background-color: #f8fafc;">
+        <button class="btn btn-secondary" onclick="closeDocModal('modal-rechazar')" style="height: 32px; padding: 0 1rem; font-size: 0.7rem; text-transform: none; border-color: #cbd5e1; background-color: #ffffff; color: var(--text-dark);">Cancelar</button>
+        <button class="btn" onclick="submitRechazar()" style="background-color: #dc2626; color: white; height: 32px; padding: 0 1rem; font-size: 0.7rem; border: none; text-transform: none;">Confirmar Rechazo</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal Aprobar -->
+  <div id="modal-aprobar" class="modal-overlay">
+    <div class="modal-card" style="max-width: 400px; width: 90%; text-align: center; padding: 2rem 1.5rem;">
+      <div style="display: flex; justify-content: center; margin-bottom: 1.25rem;">
+        <div style="width: 60px; height: 60px; border-radius: 50%; background-color: #f0fdf4; display: flex; align-items: center; justify-content: center; border: 2px solid #bbf7d0;">
+          <svg viewBox="0 0 24 24" style="width: 32px; height: 32px; fill: #16a34a;">
+            <path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/>
+          </svg>
+        </div>
+      </div>
+      <h3 style="font-size: 1rem; font-weight: 800; color: #1e293b; margin-bottom: 0.75rem; text-transform: none;">¿Aprobar Solicitud?</h3>
+      <p style="font-size: 0.75rem; color: #64748b; line-height: 1.5; margin-bottom: 1.5rem; text-transform: none;">
+        ¿Está seguro de proceder con la aprobación de esta solicitud? Esta acción no se puede deshacer.
+      </p>
+      <div style="display: flex; justify-content: center; gap: 0.75rem;">
+        <button class="btn btn-secondary" onclick="closeDocModal('modal-aprobar')" style="height: 32px; padding: 0 1.25rem; font-size: 0.7rem; text-transform: none; border-color: #cbd5e1; background-color: #ffffff; color: var(--text-dark);">Cancelar</button>
+        <button class="btn" onclick="submitAprobar()" style="background-color: #16a34a; color: white; height: 32px; padding: 0 1.25rem; font-size: 0.7rem; border: none; text-transform: none; font-weight: 600;">Confirmar Aprobación</button>
+      </div>
+    </div>
+  </div>
+
+
+
+  <script src="script.js"></script>
+  <script src="revisar.js"></script>
+</body>
+</html>
