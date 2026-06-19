@@ -19,6 +19,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const tipoDocumento = document.getElementById('tipoDocumento');
     const nroDocumento = document.getElementById('nroDocumento');
     const nroTelefono = document.getElementById('nroTelefono');
+    const calcTelefonoPoliticas = document.getElementById('calcTelefonoPoliticas');
     const toggleConyuge = document.getElementById('toggleConyuge');
     const conyugeData = document.getElementById('conyugeData');
     const labelNo = document.getElementById('labelNo');
@@ -53,6 +54,7 @@ document.addEventListener('DOMContentLoaded', () => {
     let currentSolicitudId = null;
     let correlativoCounter = 1;
     let isSolicitudReadOnly = false;
+    let currentCarretera = 'EXPRESS';
 
     // ============================
     // MOCK DATA — Bandeja de Entrada
@@ -260,10 +262,10 @@ document.addEventListener('DOMContentLoaded', () => {
             isValid = true;
         }
 
-        // If cónyuge is active, also validate cónyuge doc
+        // If cónyuge is active, also validate cónyuge DNI
         if (isValid && toggleConyuge.checked) {
             const conyugeDoc = document.getElementById('nroDocConyuge').value.trim();
-            if (conyugeDoc.length < 5) {
+            if (!/^\d{8}$/.test(conyugeDoc)) {
                 isValid = false;
             }
         }
@@ -281,7 +283,10 @@ document.addEventListener('DOMContentLoaded', () => {
     tipoDocumento.addEventListener('change', validateSimulacionForm);
 
     // Also listen on cónyuge document field
-    document.getElementById('nroDocConyuge').addEventListener('input', validateSimulacionForm);
+    document.getElementById('nroDocConyuge').addEventListener('input', (e) => {
+        e.target.value = e.target.value.replace(/\D/g, '');
+        validateSimulacionForm();
+    });
     toggleConyuge.addEventListener('change', () => {
         setTimeout(validateSimulacionForm, 100);
     });
@@ -298,6 +303,15 @@ document.addEventListener('DOMContentLoaded', () => {
     nroTelefono.addEventListener('input', (e) => {
         e.target.value = e.target.value.replace(/\D/g, '');
     });
+
+    if (calcTelefonoPoliticas) {
+        calcTelefonoPoliticas.addEventListener('input', (e) => {
+            e.target.value = e.target.value.replace(/\D/g, '');
+            e.target.setCustomValidity('');
+            clearTelefonoPoliticasHighlight();
+            updateContinuarDesdeCalculoState();
+        });
+    }
 
     // Simular button — navigate to Resultado
     btnSimular.addEventListener('click', () => {
@@ -319,9 +333,140 @@ document.addEventListener('DOMContentLoaded', () => {
         if (targetBtn) targetBtn.classList.add('active');
     }
 
+
+    function setResultadoDocumento(tipoDoc, nroDoc) {
+        const tipoDocEl = document.getElementById('resTipoDoc');
+        const nroDocEl = document.getElementById('resNroDoc');
+        if (tipoDocEl) {
+            if ('value' in tipoDocEl) tipoDocEl.value = tipoDoc;
+            tipoDocEl.textContent = tipoDoc;
+        }
+        if (nroDocEl) {
+            if ('value' in nroDocEl) nroDocEl.value = nroDoc;
+            nroDocEl.textContent = nroDoc;
+        }
+    }
+
+    function getResultadoDocumento() {
+        const tipoDocEl = document.getElementById('resTipoDoc');
+        const nroDocEl = document.getElementById('resNroDoc');
+        return {
+            tipoDoc: tipoDocEl ? (tipoDocEl.value || tipoDocEl.textContent || '').trim() : '',
+            nroDoc: nroDocEl ? (nroDocEl.value || nroDocEl.textContent || '').trim() : ''
+        };
+    }
+
+    function syncIngresoEstimadoCalculo() {
+        const resIngresoEstimado = document.getElementById('resIngresoEstimado');
+        const calcIngresoEstimado = document.getElementById('calcIngresoEstimado');
+        if (resIngresoEstimado && calcIngresoEstimado) {
+            calcIngresoEstimado.value = resIngresoEstimado.textContent;
+        }
+    }
+
+    function syncTelefonoPoliticasCalculo() {
+        if (calcTelefonoPoliticas) {
+            calcTelefonoPoliticas.value = nroTelefono.value.trim();
+            calcTelefonoPoliticas.setCustomValidity('');
+            if (calcTelefonoPoliticas.value.trim()) {
+                clearTelefonoPoliticasHighlight();
+            }
+        }
+        updateContinuarDesdeCalculoState();
+    }
+
+    function getTelefonoPoliticasCalculo() {
+        return calcTelefonoPoliticas ? calcTelefonoPoliticas.value.trim() : nroTelefono.value.trim();
+    }
+
+    function validarTelefonoPoliticasCalculo() {
+        if (!calcTelefonoPoliticas) return true;
+        const telefono = getTelefonoPoliticasCalculo();
+        if (!telefono) {
+            resaltarTelefonoPoliticasCalculo();
+            return false;
+        }
+        calcTelefonoPoliticas.setCustomValidity('');
+        clearTelefonoPoliticasHighlight();
+        return true;
+    }
+
+    function clearTelefonoPoliticasHighlight() {
+        if (!calcTelefonoPoliticas) return;
+        calcTelefonoPoliticas.classList.remove('input-attention');
+        const group = calcTelefonoPoliticas.closest('.form-group');
+        if (group) group.classList.remove('field-attention');
+    }
+
+    function resaltarTelefonoPoliticasCalculo() {
+        if (!calcTelefonoPoliticas) return;
+        if (getTelefonoPoliticasCalculo()) {
+            calcTelefonoPoliticas.setCustomValidity('');
+            clearTelefonoPoliticasHighlight();
+            return;
+        }
+        const group = calcTelefonoPoliticas.closest('.form-group');
+        calcTelefonoPoliticas.classList.remove('input-attention');
+        if (group) group.classList.remove('field-attention');
+        void calcTelefonoPoliticas.offsetWidth;
+        calcTelefonoPoliticas.classList.add('input-attention');
+        if (group) group.classList.add('field-attention');
+        calcTelefonoPoliticas.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        calcTelefonoPoliticas.focus({ preventScroll: true });
+        calcTelefonoPoliticas.setCustomValidity('Ingrese el N° de teléfono para enviar la URL de políticas de privacidad.');
+    }
+
+    function tieneFilaCalculoSeleccionada() {
+        return !!document.querySelector('#calcCuotasBody tr.selected');
+    }
+
+    function updateContinuarDesdeCalculoState() {
+        const btnContinuarCalculo = document.getElementById('btnContinuarDesdeCalculo');
+        if (!btnContinuarCalculo) return;
+        const debeHabilitar = tieneFilaCalculoSeleccionada() && getTelefonoPoliticasCalculo();
+        btnContinuarCalculo.disabled = false;
+        btnContinuarCalculo.classList.toggle('is-disabled', !debeHabilitar);
+        btnContinuarCalculo.setAttribute('aria-disabled', String(!debeHabilitar));
+    }
+
+    function puedeContinuarDesdeCalculo() {
+        return tieneFilaCalculoSeleccionada() && getTelefonoPoliticasCalculo();
+    }
+
+    function getConyugeSimulacionData() {
+        const tipoDocConyugeEl = document.getElementById('tipoDocConyuge');
+        const nroDocConyugeEl = document.getElementById('nroDocConyuge');
+        const nroDocConyugeValue = nroDocConyugeEl ? nroDocConyugeEl.value.trim() : '';
+        return {
+            tieneConyuge: toggleConyuge.checked && nroDocConyugeValue !== '',
+            tipoDoc: tipoDocConyugeEl ? tipoDocConyugeEl.value : 'DNI',
+            nroDoc: nroDocConyugeValue
+        };
+    }
+
+    function actualizarConyugeResultado() {
+        const conyuge = getConyugeSimulacionData();
+        const resConyugeCard = document.getElementById('resConyugeCard');
+        const resTipoDocConyuge = document.getElementById('resTipoDocConyuge');
+        const resNroDocConyuge = document.getElementById('resNroDocConyuge');
+        if (!resConyugeCard) return;
+
+        if (conyuge.tieneConyuge) {
+            if (resTipoDocConyuge) resTipoDocConyuge.value = conyuge.tipoDoc;
+            if (resNroDocConyuge) resNroDocConyuge.value = conyuge.nroDoc;
+            resConyugeCard.style.display = 'block';
+        } else {
+            if (resTipoDocConyuge) resTipoDocConyuge.value = 'DNI';
+            if (resNroDocConyuge) resNroDocConyuge.value = '';
+            resConyugeCard.style.display = 'none';
+        }
+    }
+
     document.querySelectorAll('.flujo-tab-btn').forEach(btn => {
         btn.addEventListener('click', () => {
-            showFlujoTab(btn.dataset.target === 'tabCalculo' ? 'calculo' : 'resultado');
+            const esCalculo = btn.dataset.target === 'tabCalculo';
+            showFlujoTab(esCalculo ? 'calculo' : 'resultado');
+            if (esCalculo) syncTelefonoPoliticasCalculo();
             window.scrollTo({ top: 0, behavior: 'smooth' });
         });
     });
@@ -379,8 +524,8 @@ document.addEventListener('DOMContentLoaded', () => {
         // Populate the resultado view
         document.getElementById('resSolicitudId').textContent = solicitudId;
         document.getElementById('resFechaHora').textContent = `${fechaStr}`; // show correct date & time
-        document.getElementById('resTipoDoc').value = tipoDoc;
-        document.getElementById('resNroDoc').value = nroDoc;
+        setResultadoDocumento(tipoDoc, nroDoc);
+        actualizarConyugeResultado();
         document.getElementById('resMontoPreaprobado').textContent = `S/ ${mockData.montoPreaprobado}`;
         document.getElementById('resCalificacion').textContent = mockData.califica ? 'CALIFICA' : 'NO CALIFICA';
         document.getElementById('resCalificacionMsg').textContent = mockData.califica
@@ -388,9 +533,10 @@ document.addEventListener('DOMContentLoaded', () => {
             : 'El cliente no cumple con los criterios de evaluación.';
         document.getElementById('resSegmentoRiesgo').textContent = mockData.segmentoRiesgo;
         document.getElementById('resIngresoEstimado').textContent = `S/ ${mockData.ingresoEstimado}`;
-        document.getElementById('resCuotaMaxima').textContent = `S/ ${mockData.cuotaMaxima}`;
+        syncIngresoEstimadoCalculo();
+        document.getElementById('resCuotaMaxima').textContent = `S/ ${mockData.capacidadEndeudamientoMaxima}`;
         const calcCuotaMaxima = document.getElementById('calcCuotaMaxima');
-        if (calcCuotaMaxima) calcCuotaMaxima.value = `S/ ${mockData.cuotaMaxima}`;
+        if (calcCuotaMaxima) calcCuotaMaxima.value = `S/ ${mockData.capacidadEndeudamientoMaxima}`;
         const calcIngresoDeclaradoInicial = document.getElementById('calcIngresoDeclarado');
         if (calcIngresoDeclaradoInicial) calcIngresoDeclaradoInicial.value = '';
 
@@ -419,6 +565,38 @@ document.addEventListener('DOMContentLoaded', () => {
         window.scrollTo({ top: 0, behavior: 'smooth' });
 
         showToast('Simulación procesada y registrada en bandeja.', 'success');
+        mostrarPopupSolicitudGenerada(solicitudId);
+    }
+
+    function mostrarPopupSolicitudGenerada(solicitudId) {
+        modalTitle.textContent = 'Solicitud generada con éxito';
+        modalBody.innerHTML = `
+            <div class="popup-solicitud-success">
+                <div class="popup-solicitud-icon">
+                    <span class="material-icons-outlined">check_circle</span>
+                </div>
+                <p class="popup-solicitud-text">La simulación fue procesada correctamente.</p>
+                <div class="popup-solicitud-number">
+                    <span>N° de solicitud</span>
+                    <strong>${solicitudId}</strong>
+                </div>
+            </div>
+        `;
+
+        document.getElementById('modalBtnCancel').style.display = 'none';
+        document.getElementById('modalBtnAction').style.display = 'inline-flex';
+        document.getElementById('modalBtnAction').textContent = 'Aceptar';
+
+        const oldActionBtn = document.getElementById('modalBtnAction');
+        const newActionBtn = oldActionBtn.cloneNode(true);
+        oldActionBtn.parentNode.replaceChild(newActionBtn, oldActionBtn);
+        newActionBtn.addEventListener('click', () => {
+            closeModal();
+            document.getElementById('modalBtnCancel').style.display = 'inline-flex';
+        });
+
+        modalOverlay.classList.add('active');
+        document.body.style.overflow = 'hidden';
     }
 
     function generateMockEvaluacion(nroDoc) {
@@ -428,15 +606,17 @@ document.addEventListener('DOMContentLoaded', () => {
         const montos = ['150,000.00', '200,000.00', '250,000.00', '300,000.00', '350,000.00', '85,000.00', '120,000.00'];
         const segmentos = ['NORMAL', 'REGULAR', 'PREFERENTE', 'BAJO'];
         const ingresos = ['3,500.00', '4,200.00', '5,850.00', '7,200.00', '8,500.00', '6,100.00'];
-        const cuotas = ['1,520.00', '1,890.00', '2,540.00', '3,100.00', '3,680.00', '2,200.00'];
         const ingresosDeclarados = ['4,000.00', '5,000.00', '6,000.00', '7,500.00', '8,000.00', '10,000.00'];
+        const ingresoEstimado = ingresos[seed % ingresos.length];
+        const capacidadEndeudamientoMaxima = calcularFinanciamientoMaximo(parseMoneyValue(ingresoEstimado), 60, 0.128)
+            .toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
         return {
             montoPreaprobado: montos[seed % montos.length],
             califica: seed % 5 !== 0, // ~80% califica
             segmentoRiesgo: segmentos[seed % segmentos.length],
-            ingresoEstimado: ingresos[seed % ingresos.length],
-            cuotaMaxima: cuotas[seed % cuotas.length],
+            ingresoEstimado,
+            capacidadEndeudamientoMaxima,
             ingresoDeclarado: ingresosDeclarados[seed % ingresosDeclarados.length]
         };
     }
@@ -453,7 +633,7 @@ document.addEventListener('DOMContentLoaded', () => {
         window.scrollTo({ top: 0, behavior: 'smooth' });
     });
 
-    // Continuar desde Resultado — muestra la pestaña Cálculo dentro de la misma sección
+    // Siguiente desde Resultado — muestra la pestaña Cálculo dentro de la misma sección
     document.getElementById('btnContinuarSolicitud').addEventListener('click', () => {
         document.querySelectorAll('.module-page').forEach(p => p.classList.remove('active'));
         document.getElementById('moduloResultado').classList.add('active');
@@ -461,27 +641,30 @@ document.addEventListener('DOMContentLoaded', () => {
         const calcCuotaMaxima = document.getElementById('calcCuotaMaxima');
         const resCuotaMaxima = document.getElementById('resCuotaMaxima');
         if (calcCuotaMaxima && resCuotaMaxima) calcCuotaMaxima.value = resCuotaMaxima.textContent;
+        syncIngresoEstimadoCalculo();
+        syncTelefonoPoliticasCalculo();
         document.getElementById('calcResultadoCard').style.display = 'none';
-        document.getElementById('btnContinuarDesdeCalculo').disabled = true;
         document.querySelectorAll('#calcCuotasBody tr').forEach(r => r.classList.remove('selected'));
+        updateContinuarDesdeCalculoState();
         window.scrollTo({ top: 0, behavior: 'smooth' });
     });
 
     function continuarARegistroSolicitud() {
         const idSolicitud = document.getElementById('resSolicitudId').textContent;
-        const tipoDoc = document.getElementById('resTipoDoc').value;
-        const nroDoc = document.getElementById('resNroDoc').value;
+        const { tipoDoc, nroDoc } = getResultadoDocumento();
 
         // Update stage to SOLICITUD and status to CONSTRUCCIÓN in solicitudes
         const currentSol = solicitudes.find(s => s.id === idSolicitud);
+        const carreteraActual = getCarreteraActual();
         if (currentSol) {
             currentSol.etapa = 'SOLICITUD';
             currentSol.estado = 'CONSTRUCCIÓN';
+            currentSol.cartera = carreteraActual;
         }
 
         // Set top header info bar
         document.getElementById('regSolicitudId').textContent = idSolicitud;
-        document.getElementById('regCartera').textContent = "EXPRESS";
+        document.getElementById('regCartera').textContent = carreteraActual;
         document.getElementById('regUsuario').textContent = "ALOCHA";
 
         // Set pre-populated fields for Datos Cliente
@@ -491,7 +674,7 @@ document.addEventListener('DOMContentLoaded', () => {
         document.getElementById('regApePaterno').value = "Pérez";
         document.getElementById('regApeMaterno').value = "García";
         document.getElementById('regFechaNac').value = "11/05/1995";
-        document.getElementById('regCelular').value = nroTelefono.value || "";
+        document.getElementById('regCelular').value = getTelefonoPoliticasCalculo() || nroTelefono.value || "";
         document.getElementById('regCorreo').value = "";
         
         // Reset inputs that are editable
@@ -563,8 +746,8 @@ document.addEventListener('DOMContentLoaded', () => {
         applyRegistrationFormReadOnlyState(false);
         attachedDocs = [];
         renderChecklistTable();
-        document.getElementById('chkManualDni').checked = false;
-        document.getElementById('chkManualExcel').checked = false;
+        actualizarChecklistPorCarretera(carreteraActual);
+        resetChecklistManualChecks();
         document.getElementById('regComentarios').value = "";
 
         // Navigate to Registro screen
@@ -575,7 +758,17 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function mostrarPopupPoliticasDatosPersonales() {
-        const telefono = nroTelefono.value.trim() || 'no registrado';
+        if (!puedeContinuarDesdeCalculo()) {
+            if (!getTelefonoPoliticasCalculo()) {
+                resaltarTelefonoPoliticasCalculo();
+            } else {
+                clearTelefonoPoliticasHighlight();
+            }
+            updateContinuarDesdeCalculoState();
+            return;
+        }
+        if (!validarTelefonoPoliticasCalculo()) return;
+        const telefono = getTelefonoPoliticasCalculo();
         modalTitle.textContent = 'Políticas de datos personales';
         modalBody.innerHTML = `
             <div class="popup-politicas-confirmacion">
@@ -606,6 +799,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     document.getElementById('btnContinuarDesdeCalculo').addEventListener('click', mostrarPopupPoliticasDatosPersonales);
+    updateContinuarDesdeCalculoState();
 
     document.getElementById('btnRegresarCalculo').addEventListener('click', () => {
         document.querySelectorAll('.module-page').forEach(p => p.classList.remove('active'));
@@ -622,10 +816,135 @@ document.addEventListener('DOMContentLoaded', () => {
         return `${currency} ${Number(value || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
     }
 
-    function calcularCapacidadPago() {
-        const ingreso = parseMoneyValue(document.getElementById('calcIngresoDeclarado').value);
-        const capacidad = ingreso * 0.35;
-        showToast(`Capacidad de pago calculada: ${formatMoneyValue(capacidad)}`, 'success');
+    function getReglasCarretera(carretera) {
+        const tipo = String(carretera || 'EXPRESS').toUpperCase();
+        if (tipo === 'FULL') {
+            return {
+                carretera: 'FULL',
+                documentos: ['Copia de DNI ambas caras.', 'Recibo de servicios.', 'Cotización del vehículo.'],
+                verificacion: 'Verificación domiciliaria'
+            };
+        }
+
+        return {
+            carretera: 'EXPRESS',
+            documentos: ['Copia de DNI ambas caras.'],
+            verificacion: 'No aplicable'
+        };
+    }
+
+    function renderPolicyItems(items) {
+        if (!items || items.length <= 1) return items && items[0] ? items[0] : '';
+        return `<ul class="policy-list">${items.map(item => `<li>${item}</li>`).join('')}</ul>`;
+    }
+
+    function actualizarPoliticasPorCarretera(carretera) {
+        const reglas = getReglasCarretera(carretera);
+        currentCarretera = reglas.carretera;
+
+        const calcCarretera = document.getElementById('calcCarretera');
+        const calcDocumentos = document.getElementById('calcDocumentos');
+        const calcVerificacion = document.getElementById('calcVerificacion');
+
+        if (calcCarretera) calcCarretera.textContent = reglas.carretera;
+        if (calcDocumentos) calcDocumentos.innerHTML = renderPolicyItems(reglas.documentos);
+        if (calcVerificacion) calcVerificacion.textContent = reglas.verificacion;
+
+        return reglas;
+    }
+
+    function getCarreteraActual() {
+        const calcCarretera = document.getElementById('calcCarretera');
+        return String(calcCarretera?.textContent || currentCarretera || 'EXPRESS').trim().toUpperCase();
+    }
+
+    function actualizarChecklistPorCarretera(carretera) {
+        const reglas = getReglasCarretera(carretera);
+        const tag = document.getElementById('regChecklistCarteraTag');
+        const desc = document.getElementById('regChecklistDesc');
+        const reciboItem = document.getElementById('manualReciboItem');
+        const cotizacionItem = document.getElementById('manualCotizacionItem');
+        const chkRecibo = document.getElementById('chkManualRecibo');
+        const chkCotizacion = document.getElementById('chkManualCotizacion');
+
+        if (tag) {
+            tag.textContent = `CARTERA: ${reglas.carretera}`;
+            tag.classList.toggle('tag-full', reglas.carretera === 'FULL');
+        }
+
+        if (desc) {
+            desc.textContent = reglas.carretera === 'FULL'
+                ? 'Para carretera FULL se requiere adjuntar copia de DNI ambas caras, recibo de servicios y cotización del vehículo.'
+                : 'Para carretera EXPRESS solo se requiere adjuntar copia de DNI ambas caras.';
+        }
+
+        const esFull = reglas.carretera === 'FULL';
+        if (reciboItem) reciboItem.style.display = esFull ? 'block' : 'none';
+        if (cotizacionItem) cotizacionItem.style.display = esFull ? 'block' : 'none';
+        if (!esFull) {
+            if (chkRecibo) chkRecibo.checked = false;
+            if (chkCotizacion) chkCotizacion.checked = false;
+        }
+    }
+
+    function resetChecklistManualChecks() {
+        ['chkManualDni', 'chkManualRecibo', 'chkManualCotizacion'].forEach(id => {
+            const item = document.getElementById(id);
+            if (item) item.checked = false;
+        });
+    }
+
+    function getRequiredManualChecks(carretera) {
+        const reglas = getReglasCarretera(carretera);
+        const checks = [
+            { id: 'chkManualDni', label: 'Copia de DNI ambas caras' }
+        ];
+        if (reglas.carretera === 'FULL') {
+            checks.push(
+                { id: 'chkManualRecibo', label: 'Recibo de servicios' },
+                { id: 'chkManualCotizacion', label: 'Cotización del vehículo' }
+            );
+        }
+        return checks;
+    }
+
+    function obtenerBaseIngresoCalculo() {
+        const ingresoEstimado = parseMoneyValue(document.getElementById('calcIngresoEstimado').value);
+        const ingresoDeclarado = parseMoneyValue(document.getElementById('calcIngresoDeclarado').value);
+        const usaIngresoDeclarado = ingresoDeclarado > 0;
+        const ingresoBase = usaIngresoDeclarado ? ingresoDeclarado : ingresoEstimado;
+
+        return {
+            ingresoEstimado,
+            ingresoDeclarado,
+            usaIngresoDeclarado,
+            ingresoBase
+        };
+    }
+
+    function calcularCuotaMensualMaxima(ingresoBase) {
+        return ingresoBase * 0.35;
+    }
+
+    function calcularFinanciamientoMaximo(ingresoBase, plazoMeses, tea) {
+        const cuotaMensualMaxima = calcularCuotaMensualMaxima(ingresoBase);
+        const tasaMensual = Math.pow(1 + tea, 1 / 12) - 1;
+
+        if (tasaMensual > 0) {
+            return cuotaMensualMaxima * (1 - Math.pow(1 + tasaMensual, -plazoMeses)) / tasaMensual;
+        }
+
+        return cuotaMensualMaxima * plazoMeses;
+    }
+
+    function calcularCapacidadEndeudamientoMaxima(plazoMeses = 60, tea = 0.128) {
+        const { ingresoBase } = obtenerBaseIngresoCalculo();
+        const capacidad = calcularFinanciamientoMaximo(ingresoBase, plazoMeses, tea);
+        const calcCapacidadEndeudamiento = document.getElementById('calcCuotaMaxima');
+        if (calcCapacidadEndeudamiento) {
+            calcCapacidadEndeudamiento.value = formatMoneyValue(capacidad);
+        }
+        showToast(`Capacidad de endeudamiento máxima calculada: ${formatMoneyValue(capacidad)}`, 'success');
         return capacidad;
     }
 
@@ -634,13 +953,23 @@ document.addEventListener('DOMContentLoaded', () => {
         const precioUsd = parseMoneyValue(document.getElementById('calcPrecioUsd').value);
         const inicial = parseMoneyValue(document.getElementById('calcCuotaInicial').value);
         const tipoCambio = parseMoneyValue(document.getElementById('calcTipoCambio').value) || 1;
-        const monedaCredito = document.getElementById('calcMonedaCredito').value;
+        const monedaCreditoEl = document.getElementById('calcMonedaCredito');
+        const monedaPrecioEl = document.getElementById('calcMonedaPrecio');
+        const monedaCredito = monedaCreditoEl ? monedaCreditoEl.value : 'PEN';
+        const monedaPrecio = monedaPrecioEl ? monedaPrecioEl.value : 'USD';
         const currency = monedaCredito === 'USD' ? '$' : 'S/';
-        const montoFinanciarUsd = Math.max(precioUsd - inicial, 0);
-        const montoFinanciar = monedaCredito === 'USD' ? montoFinanciarUsd : montoFinanciarUsd * tipoCambio;
-        const capacidad = calcularCapacidadPago();
+        const montoOperacion = monedaPrecio === 'USD' ? precioUsd * tipoCambio : precioUsd;
+        const cuotaInicial = monedaPrecio === 'USD' ? inicial * tipoCambio : inicial;
+        const montoFinanciar = Math.max(montoOperacion - cuotaInicial, 0);
+        const calcMontoFinanciar = document.getElementById('calcMontoFinanciar');
+        if (calcMontoFinanciar) calcMontoFinanciar.value = formatMoneyValue(montoFinanciar, 'S/');
+
+        const { ingresoEstimado, ingresoDeclarado, ingresoBase } = obtenerBaseIngresoCalculo();
         const tasaMensual = Math.pow(1 + tea, 1 / 12) - 1;
-        const plazos = [12, 24, 36, 48, 60];
+        const plazoSeleccionado = parseInt(document.getElementById('calcPlazoSeleccionado').value, 10) || 24;
+        const capacidad = calcularCapacidadEndeudamientoMaxima(plazoSeleccionado, tea);
+        const cuotaMensualMaxima = calcularCuotaMensualMaxima(ingresoBase);
+        const plazos = [plazoSeleccionado];
         const tbody = document.getElementById('calcCuotasBody');
         tbody.innerHTML = '';
 
@@ -648,7 +977,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const cuota = tasaMensual > 0
                 ? montoFinanciar * (tasaMensual * Math.pow(1 + tasaMensual, plazo)) / (Math.pow(1 + tasaMensual, plazo) - 1)
                 : montoFinanciar / plazo;
-            const cumple = cuota <= capacidad;
+            const cumple = montoFinanciar <= capacidad && cuota <= cuotaMensualMaxima;
             const tr = document.createElement('tr');
             tr.innerHTML = `
                 <td><strong>${plazo} meses</strong></td>
@@ -659,17 +988,16 @@ document.addEventListener('DOMContentLoaded', () => {
             tr.addEventListener('click', () => {
                 document.querySelectorAll('#calcCuotasBody tr').forEach(row => row.classList.remove('selected'));
                 tr.classList.add('selected');
-                document.getElementById('btnContinuarDesdeCalculo').disabled = false;
+                updateContinuarDesdeCalculoState();
             });
             tbody.appendChild(tr);
         });
 
-        document.getElementById('calcCarretera').textContent = 'EXPRESS';
-        document.getElementById('calcDocumentos').textContent = 'Copia de DNI';
-        document.getElementById('calcVerificacion').textContent = 'No aplicable';
+        const carreteraCalculada = ingresoDeclarado > ingresoEstimado ? 'FULL' : 'EXPRESS';
+        actualizarPoliticasPorCarretera(carreteraCalculada);
         document.getElementById('calcResultadoCard').style.display = 'block';
-        document.getElementById('btnContinuarDesdeCalculo').disabled = true;
-        showToast('Grilla de cuotas generada. Selecciona un plazo para continuar.', 'success');
+        updateContinuarDesdeCalculoState();
+        showToast('Grilla de cuotas generada. Selecciona el plazo calculado para continuar.', 'success');
     });
 
     // ========================================
@@ -911,18 +1239,20 @@ document.addEventListener('DOMContentLoaded', () => {
         editingDocId = null;
     });
 
-    // Mock "Pasar a Riesgos" -> WhatsApp OTP Validation Modal
+    // Pasar a Riesgos sin validación OTP
     document.getElementById('btnPasarRiesgos').addEventListener('click', () => {
         const celular = document.getElementById('regCelular').value.trim();
         const tipoDoc = document.getElementById('regTipoDoc').value;
         const nroDoc = document.getElementById('regNroDoc').value;
-        const manualDniChecked = document.getElementById('chkManualDni').checked;
-        const manualExcelChecked = document.getElementById('chkManualExcel').checked;
+        const carreteraRegistro = String(document.getElementById('regCartera')?.textContent || currentCarretera || 'EXPRESS').trim().toUpperCase();
+        const requiredManualChecks = getRequiredManualChecks(carreteraRegistro);
+        const missingManualChecks = requiredManualChecks.filter(item => !document.getElementById(item.id)?.checked);
         const hasAttachedFile = attachedDocs.length > 0;
 
-        // Validation: Only validate that there is at least one file attached and checkboxes are checked
-        if (!manualDniChecked || !manualExcelChecked) {
-            showToast('Debe marcar las casillas manuales de "Documentos a adjuntar (marcar manual)" (DNI y Excel).', 'warning');
+        // Validation: Only validate that there is at least one file attached and required checkboxes are checked
+        if (missingManualChecks.length > 0) {
+            const missingLabels = missingManualChecks.map(item => item.label).join(', ');
+            showToast(`Debe marcar las casillas manuales requeridas para carretera ${carreteraRegistro}: ${missingLabels}.`, 'warning');
             return;
         }
         if (!hasAttachedFile) {
@@ -932,137 +1262,95 @@ document.addEventListener('DOMContentLoaded', () => {
 
         const celularText = celular || '922159933';
 
-        // Show OTP validation modal
-        modalTitle.textContent = 'Verificación de Identidad (OTP)';
+        // Generate current timestamp matching the format dd-mm-yyyy hh:mm:ss
+        const now = new Date();
+        const dd = String(now.getDate()).padStart(2, '0');
+        const mm = String(now.getMonth() + 1).padStart(2, '0');
+        const yyyy = now.getFullYear();
+        const hh = String(now.getHours()).padStart(2, '0');
+        const min = String(now.getMinutes()).padStart(2, '0');
+        const ss = String(now.getSeconds()).padStart(2, '0');
+        const fechaStr = `${dd}-${mm}-${yyyy} ${hh}:${min}:${ss}`;
+
+        const capitalizeWord = (str) => {
+            if (!str) return '';
+            return str.trim().split(' ').map(w => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase()).join(' ');
+        };
+        const concesionarioStr = capitalizeWord(document.getElementById('regVehConcesionario').value) || 'Hyundai';
+        const tiendaStr = capitalizeWord(document.getElementById('regVehTienda').value) || 'Puruchuco';
+
+        // Update the existing request in solicitudes, or add new if not found
+        const solId = document.getElementById('regSolicitudId').textContent;
+        const existingSol = solicitudes.find(s => s.id === solId);
+        if (existingSol) {
+            existingSol.fecha = fechaStr;
+            existingSol.etapa = 'RIESGOS';
+            existingSol.estado = 'PENDIENTE';
+            existingSol.telefono = celularText;
+            existingSol.concesionario = concesionarioStr;
+            existingSol.tienda = tiendaStr;
+            
+            // Set the correct calculated amount from the form
+            const precioVehStr = document.getElementById('regSimPrecioVeh').value;
+            if (precioVehStr) {
+                existingSol.monto = precioVehStr.replace('$', 'S/');
+            }
+        } else {
+            const newSol = {
+                id: solId,
+                cliente: 'Juan Pérez García',
+                documento: `${tipoDoc} - ${nroDoc}`,
+                tipoCredito: 'Crédito vehicular',
+                monto: 'S/ 21,480.00',
+                fecha: fechaStr,
+                estado: 'PENDIENTE',
+                etapa: 'RIESGOS',
+                telefono: celularText,
+                concesionario: concesionarioStr,
+                tienda: tiendaStr
+            };
+            solicitudes.unshift(newSol);
+        }
+
+        // Navigate to Bandeja
+        document.querySelectorAll('.module-page').forEach(page => page.classList.remove('active'));
+        document.getElementById('moduloBandeja').classList.add('active');
+        
+        navItems.forEach(n => n.classList.remove('active'));
+        document.getElementById('navBandeja').classList.add('active');
+        
+        // Re-render table with new item
+        applyBandejaFilters();
+
+        mostrarPopupEnvioRiesgos();
+    });
+
+    function mostrarPopupEnvioRiesgos() {
+        modalTitle.textContent = 'Envío exitoso';
         modalBody.innerHTML = `
-            <div style="display: flex; flex-direction: column; align-items: center; text-align: center; gap: 16px; padding: 10px 0;">
-                <div style="width: 60px; height: 60px; border-radius: 50%; background-color: #e8f5e9; display: flex; align-items: center; justify-content: center;">
-                    <span class="material-icons-outlined" style="font-size: 36px; color: #25d366;">whatsapp</span>
+            <div class="popup-solicitud-success">
+                <div class="popup-solicitud-icon">
+                    <span class="material-icons-outlined">check_circle</span>
                 </div>
-                <div>
-                    <h4 style="font-size: 1rem; font-weight: 700; color: var(--primary-blue); margin-bottom: 6px;">Código OTP enviado</h4>
-                    <p style="font-size: 0.85rem; color: var(--text-secondary); line-height: 1.5;">
-                        Hemos enviado un código de seguridad de 6 dígitos al número de celular <strong>+51 ${celularText}</strong> a través de WhatsApp.
-                    </p>
-                </div>
-                <div style="margin: 12px 0; width: 100%; max-width: 280px;">
-                    <input type="text" id="inputOtpCode" maxlength="6" placeholder="0 0 0 0 0 0" 
-                        style="width: 100%; height: 50px; text-align: center; font-size: 1.6rem; letter-spacing: 12px; font-family: monospace; font-weight: 700; border: 2px solid var(--primary-blue); border-radius: 8px; color: var(--primary-blue);">
-                    <p style="font-size: 0.75rem; color: var(--text-muted); margin-top: 8px;">
-                        ¿No recibiste el código? <a href="#" style="color: var(--accent-blue); font-weight: 600;" id="btnReenviarOtp">Reenviar código</a>
-                    </p>
-                </div>
+                <p class="popup-solicitud-text">Se envió a Riesgos con éxito, espere atento para su revisión.</p>
             </div>
         `;
 
-        // Configure modal footer buttons
-        const btnCancel = document.getElementById('modalBtnCancel');
-        const btnAction = document.getElementById('modalBtnAction');
+        document.getElementById('modalBtnCancel').style.display = 'none';
+        document.getElementById('modalBtnAction').style.display = 'inline-flex';
+        document.getElementById('modalBtnAction').textContent = 'Aceptar';
 
-        btnCancel.textContent = 'Cancelar';
-        btnAction.textContent = 'Confirmar y Enviar';
-        btnAction.disabled = true; // Disabled initially
-        btnAction.style.display = 'inline-flex'; // Restore button visibility
-
-        // Reenviar OTP handler
-        document.getElementById('btnReenviarOtp').addEventListener('click', (e) => {
-            e.preventDefault();
-            showToast('Código de seguridad reenviado por WhatsApp.', 'success');
+        const oldActionBtn = document.getElementById('modalBtnAction');
+        const newActionBtn = oldActionBtn.cloneNode(true);
+        oldActionBtn.parentNode.replaceChild(newActionBtn, oldActionBtn);
+        newActionBtn.addEventListener('click', () => {
+            closeModal();
+            document.getElementById('modalBtnCancel').style.display = 'inline-flex';
         });
 
-        // Enable action button when 6 digits are typed
-        const inputOtpCode = document.getElementById('inputOtpCode');
-        inputOtpCode.focus();
-        const handleOtpInput = (e) => {
-            e.target.value = e.target.value.replace(/\D/g, ''); // numbers only
-            if (e.target.value.length === 6) {
-                btnAction.disabled = false;
-            } else {
-                btnAction.disabled = true;
-            }
-        };
-        inputOtpCode.addEventListener('input', handleOtpInput);
-
-        // Action button click handler -> Finalize request
-        const handleConfirmOtp = () => {
-            if (inputOtpCode.value.length !== 6) return;
-
-            // Remove listener so it doesn't fire multiple times
-            btnAction.removeEventListener('click', handleConfirmOtp);
-            inputOtpCode.removeEventListener('input', handleOtpInput);
-
-            // Generate current timestamp matching the format dd-mm-yyyy hh:mm:ss
-            const now = new Date();
-            const dd = String(now.getDate()).padStart(2, '0');
-            const mm = String(now.getMonth() + 1).padStart(2, '0');
-            const yyyy = now.getFullYear();
-            const hh = String(now.getHours()).padStart(2, '0');
-            const min = String(now.getMinutes()).padStart(2, '0');
-            const ss = String(now.getSeconds()).padStart(2, '0');
-            const fechaStr = `${dd}-${mm}-${yyyy} ${hh}:${min}:${ss}`;
-
-            const capitalizeWord = (str) => {
-                if (!str) return '';
-                return str.trim().split(' ').map(w => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase()).join(' ');
-            };
-            const concesionarioStr = capitalizeWord(document.getElementById('regVehConcesionario').value) || 'Hyundai';
-            const tiendaStr = capitalizeWord(document.getElementById('regVehTienda').value) || 'Puruchuco';
-
-            // Update the existing request in solicitudes, or add new if not found
-            const solId = document.getElementById('regSolicitudId').textContent;
-            const existingSol = solicitudes.find(s => s.id === solId);
-            if (existingSol) {
-                existingSol.fecha = fechaStr;
-                existingSol.etapa = 'RIESGOS';
-                existingSol.estado = 'PENDIENTE';
-                existingSol.telefono = celularText;
-                existingSol.concesionario = concesionarioStr;
-                existingSol.tienda = tiendaStr;
-                
-                // Set the correct calculated amount from the form
-                const precioVehStr = document.getElementById('regSimPrecioVeh').value;
-                if (precioVehStr) {
-                    existingSol.monto = precioVehStr.replace('$', 'S/');
-                }
-            } else {
-                const newSol = {
-                    id: solId,
-                    cliente: 'Juan Pérez García',
-                    documento: `${tipoDoc} - ${nroDoc}`,
-                    tipoCredito: 'Crédito vehicular',
-                    monto: 'S/ 21,480.00',
-                    fecha: fechaStr,
-                    estado: 'PENDIENTE',
-                    etapa: 'RIESGOS',
-                    telefono: celularText,
-                    concesionario: concesionarioStr,
-                    tienda: tiendaStr
-                };
-                solicitudes.unshift(newSol);
-            }
-
-            // Close modal
-            closeModal();
-
-            // Navigate to Bandeja
-            document.querySelectorAll('.module-page').forEach(page => page.classList.remove('active'));
-            document.getElementById('moduloBandeja').classList.add('active');
-            
-            navItems.forEach(n => n.classList.remove('active'));
-            document.getElementById('navBandeja').classList.add('active');
-            
-            // Re-render table with new item
-            applyBandejaFilters();
-
-            showToast('Solicitud registrada con éxito. Enviada a evaluación de riesgos.', 'success');
-        };
-
-        btnAction.addEventListener('click', handleConfirmOtp);
-
-        // Open modal
         modalOverlay.classList.add('active');
         document.body.style.overflow = 'hidden';
-    });
+    }
 
     // Recalcular capacidad button moved to Cálculo screen
 
@@ -1070,6 +1358,10 @@ document.addEventListener('DOMContentLoaded', () => {
     btnLimpiar.addEventListener('click', () => {
         nroDocumento.value = '';
         nroTelefono.value = '';
+        if (calcTelefonoPoliticas) {
+            calcTelefonoPoliticas.value = '';
+            clearTelefonoPoliticasHighlight();
+        }
         tipoDocumento.value = 'DNI';
         toggleConyuge.checked = false;
         conyugeData.style.display = 'none';
@@ -1079,6 +1371,7 @@ document.addEventListener('DOMContentLoaded', () => {
         document.getElementById('nroDocConyuge').value = '';
         btnSimular.disabled = true;
         btnSimular.classList.remove('enabled');
+        updateContinuarDesdeCalculoState();
         showToast('Formulario limpiado correctamente.', 'info');
     });
 
@@ -1525,8 +1818,10 @@ document.addEventListener('DOMContentLoaded', () => {
             if (currentSol) {
                 currentSol.documentos = [...attachedDocs];
                 currentSol.comentarios = document.getElementById('regComentarios').value;
-                currentSol.chkManualDni = document.getElementById('chkManualDni').checked;
-                currentSol.chkManualExcel = document.getElementById('chkManualExcel').checked;
+                currentSol.chkManualDni = document.getElementById('chkManualDni')?.checked || false;
+                currentSol.chkManualRecibo = document.getElementById('chkManualRecibo')?.checked || false;
+                currentSol.chkManualCotizacion = document.getElementById('chkManualCotizacion')?.checked || false;
+                currentSol.cartera = String(document.getElementById('regCartera')?.textContent || currentSol.cartera || 'EXPRESS').trim().toUpperCase();
                 const celular = document.getElementById('regCelular').value.trim();
                 if (celular) currentSol.telefono = celular;
             }
@@ -1543,15 +1838,15 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         // Lock checkboxes
-        const chkManualDni = document.getElementById('chkManualDni');
-        const chkManualExcel = document.getElementById('chkManualExcel');
-        if (chkManualDni && chkManualExcel) {
-            chkManualDni.disabled = readOnly;
-            chkManualExcel.disabled = readOnly;
-            if (readOnly) {
-                chkManualDni.checked = true;
-                chkManualExcel.checked = true;
-            }
+        ['chkManualDni', 'chkManualRecibo', 'chkManualCotizacion'].forEach(id => {
+            const checkbox = document.getElementById(id);
+            if (checkbox) checkbox.disabled = readOnly;
+        });
+        if (readOnly) {
+            getRequiredManualChecks(document.getElementById('regCartera')?.textContent || currentCarretera).forEach(item => {
+                const checkbox = document.getElementById(item.id);
+                if (checkbox) checkbox.checked = true;
+            });
         }
 
         // Disable comments
@@ -1593,8 +1888,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
             document.getElementById('resSolicitudId').textContent = solicitud.id;
             document.getElementById('resFechaHora').textContent = solicitud.fecha;
-            document.getElementById('resTipoDoc').value = tipoDoc;
-            document.getElementById('resNroDoc').value = nroDoc;
+            setResultadoDocumento(tipoDoc, nroDoc);
             document.getElementById('resMontoPreaprobado').textContent = `S/ ${mockData.montoPreaprobado}`;
             document.getElementById('resCalificacion').textContent = mockData.califica ? 'CALIFICA' : 'NO CALIFICA';
             document.getElementById('resCalificacionMsg').textContent = mockData.califica
@@ -1602,7 +1896,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 : 'El cliente no cumple con los criterios de evaluación.';
             document.getElementById('resSegmentoRiesgo').textContent = mockData.segmentoRiesgo;
             document.getElementById('resIngresoEstimado').textContent = `S/ ${mockData.ingresoEstimado}`;
-            document.getElementById('resCuotaMaxima').textContent = `S/ ${mockData.cuotaMaxima}`;
+            syncIngresoEstimadoCalculo();
+            document.getElementById('resCuotaMaxima').textContent = `S/ ${mockData.capacidadEndeudamientoMaxima}`;
             const calcIngresoDeclaradoReset = document.getElementById('calcIngresoDeclarado');
             if (calcIngresoDeclaradoReset) calcIngresoDeclaradoReset.value = '';
 
@@ -1628,6 +1923,9 @@ document.addEventListener('DOMContentLoaded', () => {
             window.scrollTo({ top: 0, behavior: 'smooth' });
             showToast(`Continuando Simulación para ${solicitud.id}`, 'info');
 
+        } else if (solicitud.etapa === 'DOCUMENTARIA' && solicitud.estado === 'PENDIENTE') {
+            showBandejaDocumentaria(solicitud);
+
         } else if (solicitud.etapa === 'SOLICITUD' || solicitud.etapa === 'RIESGOS') {
             const isReadOnly = (solicitud.etapa === 'RIESGOS');
 
@@ -1640,8 +1938,9 @@ document.addEventListener('DOMContentLoaded', () => {
             const nroDoc = parts[1] || '';
 
             // Set top header info bar
+            const carreteraSolicitud = String(solicitud.cartera || 'EXPRESS').trim().toUpperCase();
             document.getElementById('regSolicitudId').textContent = solicitud.id;
-            document.getElementById('regCartera').textContent = "EXPRESS";
+            document.getElementById('regCartera').textContent = carreteraSolicitud;
             document.getElementById('regUsuario').textContent = "ALOCHA";
 
             // Set pre-populated fields for Datos Cliente
@@ -1723,14 +2022,20 @@ document.addEventListener('DOMContentLoaded', () => {
             attachedDocs = solicitud.documentos ? [...solicitud.documentos] : [];
             document.getElementById('regComentarios').value = solicitud.comentarios || "";
             renderChecklistTable();
+            actualizarChecklistPorCarretera(carreteraSolicitud);
 
             // Set checkboxes checks
             if (isReadOnly) {
-                document.getElementById('chkManualDni').checked = true;
-                document.getElementById('chkManualExcel').checked = true;
+                getRequiredManualChecks(carreteraSolicitud).forEach(item => {
+                    const checkbox = document.getElementById(item.id);
+                    if (checkbox) checkbox.checked = true;
+                });
             } else {
                 document.getElementById('chkManualDni').checked = !!solicitud.chkManualDni;
-                document.getElementById('chkManualExcel').checked = !!solicitud.chkManualExcel;
+                const chkManualRecibo = document.getElementById('chkManualRecibo');
+                const chkManualCotizacion = document.getElementById('chkManualCotizacion');
+                if (chkManualRecibo) chkManualRecibo.checked = !!solicitud.chkManualRecibo;
+                if (chkManualCotizacion) chkManualCotizacion.checked = !!solicitud.chkManualCotizacion;
             }
 
             // Navigate to Registro screen
@@ -1747,6 +2052,71 @@ document.addEventListener('DOMContentLoaded', () => {
             // Fallback for other final stages
             openModal(solicitud);
         }
+    }
+
+
+    // ============================
+    // BANDEJA DOCUMENTARIA
+    // ============================
+    function showBandejaDocumentaria(solicitud) {
+        const docSolicitudId = document.getElementById('docSolicitudId');
+        const docFechaSimulacion = document.getElementById('docFechaSimulacion');
+        const docEtapa = document.getElementById('docEtapa');
+        const docClienteNombre = document.getElementById('docClienteNombre');
+        const docClienteNumero = document.getElementById('docClienteNumero');
+        const docClienteTelefono = document.getElementById('docClienteTelefono');
+
+        if (docSolicitudId) docSolicitudId.textContent = solicitud.id || 'EFE004';
+        if (docFechaSimulacion) docFechaSimulacion.textContent = solicitud.fecha || '22-05-2026 15:30:00';
+        if (docEtapa) docEtapa.textContent = solicitud.etapa || 'DOCUMENTARIA';
+        if (docClienteNombre) docClienteNombre.value = 'Juan Julio Ramirez Gonzales';
+        if (docClienteNumero) docClienteNumero.value = (solicitud.documento || 'DNI - 71865987').split(' - ')[1] || '71865987';
+        if (docClienteTelefono) docClienteTelefono.value = solicitud.telefono || '928775998';
+
+        setDocumentariaTab('vehiculo');
+
+        document.querySelectorAll('.module-page').forEach(p => p.classList.remove('active'));
+        const docPage = document.getElementById('moduloBandejaDocumentaria');
+        if (docPage) docPage.classList.add('active');
+
+        navItems.forEach(n => n.classList.remove('active'));
+        if (document.getElementById('navBandeja')) document.getElementById('navBandeja').classList.add('active');
+
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+
+    function setDocumentariaTab(tabName) {
+        const panelMap = {
+            vehiculo: 'docTabVehiculo',
+            domiciliaria: 'docTabDomiciliaria',
+            cliente: 'docTabCliente'
+        };
+
+        document.querySelectorAll('.documentaria-tab').forEach(btn => {
+            btn.classList.toggle('active', btn.dataset.docTab === tabName);
+        });
+
+        document.querySelectorAll('.documentaria-tab-panel').forEach(panel => {
+            panel.classList.toggle('active', panel.id === panelMap[tabName]);
+        });
+    }
+
+    document.querySelectorAll('.documentaria-tab').forEach(btn => {
+        btn.addEventListener('click', () => {
+            setDocumentariaTab(btn.dataset.docTab);
+        });
+    });
+
+    const btnVolverBandejaDocumentaria = document.getElementById('btnVolverBandejaDocumentaria');
+    if (btnVolverBandejaDocumentaria) {
+        btnVolverBandejaDocumentaria.addEventListener('click', () => {
+            document.querySelectorAll('.module-page').forEach(p => p.classList.remove('active'));
+            document.getElementById('moduloBandeja').classList.add('active');
+            navItems.forEach(n => n.classList.remove('active'));
+            if (document.getElementById('navBandeja')) document.getElementById('navBandeja').classList.add('active');
+            renderBandejaNewTable(filteredBandejaData);
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        });
     }
 
     // ============================
@@ -1833,38 +2203,8 @@ document.addEventListener('DOMContentLoaded', () => {
     // TOAST NOTIFICATIONS
     // ============================
     function showToast(message, type = 'info') {
-        const iconMap = {
-            success: 'check_circle',
-            error: 'error',
-            warning: 'warning',
-            info: 'info'
-        };
-
-        const toast = document.createElement('div');
-        toast.className = `toast ${type}`;
-        toast.innerHTML = `
-            <span class="toast-icon"><span class="material-icons-outlined">${iconMap[type] || 'info'}</span></span>
-            <span class="toast-message">${message}</span>
-            <button class="toast-close">
-                <span class="material-icons-outlined" style="font-size: 18px;">close</span>
-            </button>
-        `;
-
-        toastContainer.appendChild(toast);
-
-        // Close button
-        toast.querySelector('.toast-close').addEventListener('click', () => {
-            toast.style.animation = 'toastOut 0.3s ease forwards';
-            setTimeout(() => toast.remove(), 300);
-        });
-
-        // Auto-remove after 4s
-        setTimeout(() => {
-            if (toast.parentNode) {
-                toast.style.animation = 'toastOut 0.3s ease forwards';
-                setTimeout(() => toast.remove(), 300);
-            }
-        }, 4000);
+        // Notificaciones laterales deshabilitadas por requerimiento.
+        if (toastContainer) toastContainer.innerHTML = '';
     }
 
     // ============================
