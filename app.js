@@ -534,9 +534,9 @@ document.addEventListener('DOMContentLoaded', () => {
         document.getElementById('resSegmentoRiesgo').textContent = mockData.segmentoRiesgo;
         document.getElementById('resIngresoEstimado').textContent = `S/ ${mockData.ingresoEstimado}`;
         syncIngresoEstimadoCalculo();
-        document.getElementById('resCuotaMaxima').textContent = `S/ ${mockData.capacidadEndeudamientoMaxima}`;
+        document.getElementById('resCuotaMaxima').textContent = `S/ ${mockData.capacidadCuotaMaxima}`;
         const calcCuotaMaxima = document.getElementById('calcCuotaMaxima');
-        if (calcCuotaMaxima) calcCuotaMaxima.value = `S/ ${mockData.capacidadEndeudamientoMaxima}`;
+        if (calcCuotaMaxima) calcCuotaMaxima.value = `S/ ${mockData.capacidadCuotaMaxima}`;
         const calcIngresoDeclaradoInicial = document.getElementById('calcIngresoDeclarado');
         if (calcIngresoDeclaradoInicial) calcIngresoDeclaradoInicial.value = '';
 
@@ -607,16 +607,21 @@ document.addEventListener('DOMContentLoaded', () => {
         const segmentos = ['NORMAL', 'REGULAR', 'PREFERENTE', 'BAJO'];
         const ingresos = ['3,500.00', '4,200.00', '5,850.00', '7,200.00', '8,500.00', '6,100.00'];
         const ingresosDeclarados = ['4,000.00', '5,000.00', '6,000.00', '7,500.00', '8,000.00', '10,000.00'];
+        const montoPreaprobado = montos[seed % montos.length];
         const ingresoEstimado = ingresos[seed % ingresos.length];
-        const capacidadEndeudamientoMaxima = calcularFinanciamientoMaximo(parseMoneyValue(ingresoEstimado), 60, 0.128)
-            .toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+        const capacidadCuotaMaxima = calcularCapacidadCuotaMaxima(
+            parseMoneyValue(montoPreaprobado),
+            parseMoneyValue(ingresoEstimado),
+            60,
+            0.128
+        ).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
         return {
-            montoPreaprobado: montos[seed % montos.length],
+            montoPreaprobado,
             califica: seed % 5 !== 0, // ~80% califica
             segmentoRiesgo: segmentos[seed % segmentos.length],
             ingresoEstimado,
-            capacidadEndeudamientoMaxima,
+            capacidadCuotaMaxima,
             ingresoDeclarado: ingresosDeclarados[seed % ingresosDeclarados.length]
         };
     }
@@ -911,7 +916,7 @@ document.addEventListener('DOMContentLoaded', () => {
     function obtenerBaseIngresoCalculo() {
         const ingresoEstimado = parseMoneyValue(document.getElementById('calcIngresoEstimado').value);
         const ingresoDeclarado = parseMoneyValue(document.getElementById('calcIngresoDeclarado').value);
-        const usaIngresoDeclarado = ingresoDeclarado > 0;
+        const usaIngresoDeclarado = ingresoDeclarado > ingresoEstimado;
         const ingresoBase = usaIngresoDeclarado ? ingresoDeclarado : ingresoEstimado;
 
         return {
@@ -926,6 +931,23 @@ document.addEventListener('DOMContentLoaded', () => {
         return ingresoBase * 0.35;
     }
 
+    function calcularCuotaPorMonto(monto, plazoMeses, tea) {
+        const tasaMensual = Math.pow(1 + tea, 1 / 12) - 1;
+        if (tasaMensual > 0) {
+            return monto * (tasaMensual * Math.pow(1 + tasaMensual, plazoMeses)) / (Math.pow(1 + tasaMensual, plazoMeses) - 1);
+        }
+        return monto / plazoMeses;
+    }
+
+    function calcularCapacidadCuotaMaxima(montoPreaprobado, ingresoBase, plazoMeses = 60, tea = 0.128) {
+        const cuotaPorIngreso = calcularCuotaMensualMaxima(ingresoBase);
+        const cuotaPorMontoPreaprobado = montoPreaprobado > 0
+            ? calcularCuotaPorMonto(montoPreaprobado, plazoMeses, tea)
+            : cuotaPorIngreso;
+
+        return Math.min(cuotaPorIngreso, cuotaPorMontoPreaprobado);
+    }
+
     function calcularFinanciamientoMaximo(ingresoBase, plazoMeses, tea) {
         const cuotaMensualMaxima = calcularCuotaMensualMaxima(ingresoBase);
         const tasaMensual = Math.pow(1 + tea, 1 / 12) - 1;
@@ -937,18 +959,21 @@ document.addEventListener('DOMContentLoaded', () => {
         return cuotaMensualMaxima * plazoMeses;
     }
 
-    function calcularCapacidadEndeudamientoMaxima(plazoMeses = 60, tea = 0.128) {
+    function actualizarCapacidadCuotaMaximaCalculo(mostrarToast = true) {
         const { ingresoBase } = obtenerBaseIngresoCalculo();
-        const capacidad = calcularFinanciamientoMaximo(ingresoBase, plazoMeses, tea);
-        const calcCapacidadEndeudamiento = document.getElementById('calcCuotaMaxima');
-        if (calcCapacidadEndeudamiento) {
-            calcCapacidadEndeudamiento.value = formatMoneyValue(capacidad);
+        const montoPreaprobado = parseMoneyValue(document.getElementById('resMontoPreaprobado').textContent);
+        const cuotaMaxima = calcularCapacidadCuotaMaxima(montoPreaprobado, ingresoBase, 60, 0.128);
+        const calcCapacidadCuotaMaxima = document.getElementById('calcCuotaMaxima');
+        if (calcCapacidadCuotaMaxima) {
+            calcCapacidadCuotaMaxima.value = formatMoneyValue(cuotaMaxima);
         }
-        showToast(`Capacidad de endeudamiento máxima calculada: ${formatMoneyValue(capacidad)}`, 'success');
-        return capacidad;
+        if (mostrarToast) {
+            showToast(`Capacidad de cuota máxima calculada: ${formatMoneyValue(cuotaMaxima)}`, 'success');
+        }
+        return cuotaMaxima;
     }
 
-    document.getElementById('btnCalcularCuotas').addEventListener('click', () => {
+    function recalcularResultadoCalculo(mostrarToast = true) {
         const tea = parseMoneyValue(document.getElementById('calcTea').value) / 100;
         const precioUsd = parseMoneyValue(document.getElementById('calcPrecioUsd').value);
         const inicial = parseMoneyValue(document.getElementById('calcCuotaInicial').value);
@@ -967,17 +992,17 @@ document.addEventListener('DOMContentLoaded', () => {
         const { ingresoEstimado, ingresoDeclarado, ingresoBase } = obtenerBaseIngresoCalculo();
         const tasaMensual = Math.pow(1 + tea, 1 / 12) - 1;
         const plazoSeleccionado = parseInt(document.getElementById('calcPlazoSeleccionado').value, 10) || 24;
-        const capacidad = calcularCapacidadEndeudamientoMaxima(plazoSeleccionado, tea);
-        const cuotaMensualMaxima = calcularCuotaMensualMaxima(ingresoBase);
+        const cuotaMensualMaxima = actualizarCapacidadCuotaMaximaCalculo(false);
         const plazos = [plazoSeleccionado];
         const tbody = document.getElementById('calcCuotasBody');
+        const teniaFilaSeleccionada = !!document.querySelector('#calcCuotasBody tr.selected');
         tbody.innerHTML = '';
 
         plazos.forEach(plazo => {
             const cuota = tasaMensual > 0
                 ? montoFinanciar * (tasaMensual * Math.pow(1 + tasaMensual, plazo)) / (Math.pow(1 + tasaMensual, plazo) - 1)
                 : montoFinanciar / plazo;
-            const cumple = montoFinanciar <= capacidad && cuota <= cuotaMensualMaxima;
+            const cumple = cuota <= cuotaMensualMaxima;
             const tr = document.createElement('tr');
             tr.innerHTML = `
                 <td><strong>${plazo} meses</strong></td>
@@ -990,6 +1015,9 @@ document.addEventListener('DOMContentLoaded', () => {
                 tr.classList.add('selected');
                 updateContinuarDesdeCalculoState();
             });
+            if (teniaFilaSeleccionada) {
+                tr.classList.add('selected');
+            }
             tbody.appendChild(tr);
         });
 
@@ -997,8 +1025,27 @@ document.addEventListener('DOMContentLoaded', () => {
         actualizarPoliticasPorCarretera(carreteraCalculada);
         document.getElementById('calcResultadoCard').style.display = 'block';
         updateContinuarDesdeCalculoState();
-        showToast('Grilla de cuotas generada. Selecciona el plazo calculado para continuar.', 'success');
+        if (mostrarToast) {
+            showToast('Grilla de cuotas generada. Selecciona el plazo calculado para continuar.', 'success');
+        }
+    }
+
+    document.getElementById('btnCalcularCuotas').addEventListener('click', () => {
+        recalcularResultadoCalculo(true);
     });
+
+    const calcIngresoDeclaradoInput = document.getElementById('calcIngresoDeclarado');
+    if (calcIngresoDeclaradoInput) {
+        calcIngresoDeclaradoInput.addEventListener('input', (e) => {
+            e.target.value = e.target.value.replace(/[^\d.,]/g, '');
+            const resultadoVisible = document.getElementById('calcResultadoCard').style.display !== 'none' && document.querySelector('#calcCuotasBody tr');
+            if (resultadoVisible) {
+                recalcularResultadoCalculo(false);
+            } else {
+                actualizarCapacidadCuotaMaximaCalculo(false);
+            }
+        });
+    }
 
     // ========================================
     // REGISTRO DE SOLICITUD - Handlers & Logic
@@ -1897,7 +1944,9 @@ document.addEventListener('DOMContentLoaded', () => {
             document.getElementById('resSegmentoRiesgo').textContent = mockData.segmentoRiesgo;
             document.getElementById('resIngresoEstimado').textContent = `S/ ${mockData.ingresoEstimado}`;
             syncIngresoEstimadoCalculo();
-            document.getElementById('resCuotaMaxima').textContent = `S/ ${mockData.capacidadEndeudamientoMaxima}`;
+            document.getElementById('resCuotaMaxima').textContent = `S/ ${mockData.capacidadCuotaMaxima}`;
+            const calcCuotaMaximaReset = document.getElementById('calcCuotaMaxima');
+            if (calcCuotaMaximaReset) calcCuotaMaximaReset.value = `S/ ${mockData.capacidadCuotaMaxima}`;
             const calcIngresoDeclaradoReset = document.getElementById('calcIngresoDeclarado');
             if (calcIngresoDeclaradoReset) calcIngresoDeclaradoReset.value = '';
 
