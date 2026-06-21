@@ -123,7 +123,32 @@ document.addEventListener('DOMContentLoaded', () => {
             tienda: 'Puruchuco',
             etapa: 'OPERACIONES',
             estado: 'OBSERVADO',
-            telefono: '945612378'
+            telefono: '945612378',
+            downloadedPostAprobacionDocs: [
+                'Carta de aprobación',
+                'Contrato de crédito',
+                'Pagaré',
+                'Hoja resumen (TCEA)',
+                'Cronograma preliminar',
+                'Póliza de seguro vehicular',
+                'Póliza de desgravamen',
+                'Contrato de garantía'
+            ],
+            checklist2Docs: [
+                { id: 'POP001-CL2-001', name: 'DNI_cliente_POP001.pdf' },
+                { id: 'POP001-CL2-002', name: 'Contrato_credito_firmado_POP001.pdf' },
+                { id: 'POP001-CL2-003', name: 'Garantia_mobiliaria_POP001.pdf' }
+            ],
+            operacionesObservacion: {
+                analista: 'María Fernández - Operaciones',
+                motivo: 'Documento observado',
+                fechaHora: '20-05-2026 10:35:00',
+                comentario: 'Se observa que el archivo de garantía mobiliaria no cuenta con el dato completo del VIN. Regularizar el documento y reenviar a operaciones.'
+            },
+            operacionesRespuestaHabilitada: false,
+            operacionesRespuestaEnviada: false,
+            checklist2Comentario: '',
+            postAprobacionCompletionPopupShown: true
         },
         {
             id: 'POP003',
@@ -178,6 +203,48 @@ document.addEventListener('DOMContentLoaded', () => {
             telefono: '956781234'
         }
     ];
+
+    const SOLICITUD_FIRMA_AUTOMATICA_ID = 'EFE004';
+    const SOLICITUD_FIRMA_STORAGE_KEY = 'efectivaSolicitudEFE004FirmaState';
+
+    function isSolicitudFirmaAutomatica(solicitud) {
+        return !!(solicitud && solicitud.id === SOLICITUD_FIRMA_AUTOMATICA_ID);
+    }
+
+    function loadSolicitudFirmaAutomaticaState() {
+        try {
+            const stored = localStorage.getItem(SOLICITUD_FIRMA_STORAGE_KEY);
+            if (!stored) return;
+            const parsed = JSON.parse(stored);
+            const solicitud = solicitudes.find(sol => sol.id === SOLICITUD_FIRMA_AUTOMATICA_ID);
+            if (solicitud && parsed && parsed.id === SOLICITUD_FIRMA_AUTOMATICA_ID) {
+                Object.assign(solicitud, parsed);
+            }
+        } catch (error) {
+            console.warn('No se pudo recuperar el estado de firma de EFE004:', error);
+        }
+    }
+
+    function saveSolicitudFirmaAutomaticaState(solicitud) {
+        if (!isSolicitudFirmaAutomatica(solicitud)) return;
+        try {
+            const state = {
+                id: solicitud.id,
+                etapa: solicitud.etapa,
+                estado: solicitud.estado,
+                downloadedPostAprobacionDocs: Array.isArray(solicitud.downloadedPostAprobacionDocs) ? solicitud.downloadedPostAprobacionDocs : [],
+                checklist2Docs: Array.isArray(solicitud.checklist2Docs) ? solicitud.checklist2Docs.map(doc => ({ id: doc.id, name: doc.name })) : [],
+                checklist2Comentario: solicitud.checklist2Comentario || '',
+                postAprobacionCollapsed: !!solicitud.postAprobacionCollapsed,
+                postAprobacionCompletionPopupShown: !!solicitud.postAprobacionCompletionPopupShown
+            };
+            localStorage.setItem(SOLICITUD_FIRMA_STORAGE_KEY, JSON.stringify(state));
+        } catch (error) {
+            console.warn('No se pudo guardar el estado de firma de EFE004:', error);
+        }
+    }
+
+    loadSolicitudFirmaAutomaticaState();
 
     // ============================
     // SIDEBAR TOGGLE
@@ -1051,9 +1118,34 @@ document.addEventListener('DOMContentLoaded', () => {
     // REGISTRO DE SOLICITUD - Handlers & Logic
     // ========================================
 
-    // Regresar de Registro a Resultado
+    function isRiesgosPendienteSolicitud(solicitud) {
+        return !!(solicitud
+            && String(solicitud.etapa || '').trim().toUpperCase() === 'RIESGOS'
+            && String(solicitud.estado || '').trim().toUpperCase() === 'PENDIENTE');
+    }
+
+    function volverABandejaEntradaDesdeSolicitud() {
+        document.querySelectorAll('.module-page').forEach(p => p.classList.remove('active'));
+        document.getElementById('moduloBandeja').classList.add('active');
+
+        navItems.forEach(n => n.classList.remove('active'));
+        const navBandeja = document.getElementById('navBandeja');
+        if (navBandeja) navBandeja.classList.add('active');
+
+        applyBandejaFilters();
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+
+    // Regresar de Registro: si la solicitud está en RIESGOS/PENDIENTE vuelve a Bandeja; caso contrario vuelve al Resultado.
     document.getElementById('btnRegresarRegistro').addEventListener('click', () => {
         saveCurrentRegistrationState();
+        const solicitudActual = solicitudes.find(s => s.id === currentSolicitudId);
+
+        if (isRiesgosPendienteSolicitud(solicitudActual)) {
+            volverABandejaEntradaDesdeSolicitud();
+            return;
+        }
+
         document.querySelectorAll('.module-page').forEach(p => p.classList.remove('active'));
         document.getElementById('moduloResultado').classList.add('active');
         window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -1130,6 +1222,65 @@ document.addEventListener('DOMContentLoaded', () => {
     const inputDocName = document.getElementById('inputDocName');
     const btnSaveDocName = document.getElementById('btnSaveDocName');
     const btnCancelDocName = document.getElementById('btnCancelDocName');
+    const docChecklist2Body = document.getElementById('docChecklist2Body');
+    const docChecklist2FileInput = document.getElementById('docChecklist2FileInput');
+    const docChecklist2Counter = document.getElementById('docChecklist2Counter');
+    const docChecklist2Card = document.getElementById('docChecklist2Card');
+    const docChecklist2Subtitle = document.getElementById('docChecklist2Subtitle');
+    const docChecklist2Content = document.getElementById('docChecklist2Content');
+    const docChecklist2Footer = document.getElementById('docChecklist2Footer');
+    const docChecklist2Comentario = document.getElementById('docChecklist2Comentario');
+    const docChecklist2ComentarioLabel = document.getElementById('docChecklist2ComentarioLabel');
+    const docChecklist2ComentarioCounter = document.getElementById('docChecklist2ComentarioCounter');
+    const docOperacionesObservation = document.getElementById('docOperacionesObservation');
+    const btnResponderObservacionOperaciones = document.getElementById('btnResponderObservacionOperaciones');
+    const docOpsAnalista = document.getElementById('docOpsAnalista');
+    const docOpsMotivo = document.getElementById('docOpsMotivo');
+    const docOpsFechaHora = document.getElementById('docOpsFechaHora');
+    const docOpsComentarioAnalista = document.getElementById('docOpsComentarioAnalista');
+    const documentariaPageTitle = document.getElementById('documentariaPageTitle');
+    const btnEnviarOperacionesChecklist2 = document.getElementById('btnEnviarOperacionesChecklist2');
+    const docPostAprobacionCard = document.getElementById('docPostAprobacionCard');
+    const docPostAprobacionList = document.getElementById('docPostAprobacionList');
+    const btnVerMasPostDocs = document.getElementById('btnVerMasPostDocs');
+
+    const DOC_CHECKLIST2_MAX = 15;
+    let docNameContext = null;
+    let docChecklist2Docs = [];
+    let docChecklist2ComentarioValue = '';
+    let pendingChecklist2FileObject = null;
+    let editingChecklist2Index = null;
+    let postAprobacionCollapsed = false;
+    let postAprobacionCompletionPopupShown = false;
+    let currentDocumentariaSolicitud = null;
+    let isChecklist2ReadOnly = false;
+    const downloadedPostAprobacionDocs = new Set();
+
+    function escapeHtml(value) {
+        return String(value || '')
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;')
+            .replace(/'/g, '&#039;');
+    }
+
+    function isPdfFile(file) {
+        if (!file) return false;
+        return file.type === 'application/pdf' || /\.pdf$/i.test(file.name || '');
+    }
+
+    function isOperacionesObservadoSolicitud(solicitud) {
+        return !!(solicitud && solicitud.operacionesObservacion);
+    }
+
+    function isOperacionesRespuestaHabilitada() {
+        return !!(currentDocumentariaSolicitud && currentDocumentariaSolicitud.operacionesRespuestaHabilitada);
+    }
+
+    function isOperacionesRespuestaEnviada() {
+        return !!(currentDocumentariaSolicitud && currentDocumentariaSolicitud.operacionesRespuestaEnviada);
+    }
 
     function renderChecklistTable() {
         checklistTableBody.innerHTML = '';
@@ -1186,6 +1337,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const btnTriggerUpload = document.getElementById('btnTriggerUpload');
             if (btnTriggerUpload) {
                 btnTriggerUpload.addEventListener('click', () => {
+                    docNameContext = 'checklist1';
                     editingDocId = null;
                     pendingFileObject = null;
                     inputHiddenFile.click();
@@ -1213,6 +1365,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     document.getElementById('modalBtnAction').style.display = 'none';
                     modalOverlay.classList.add('active');
                 } else if (action === 'editar') {
+                    docNameContext = 'checklist1';
                     editingDocId = index;
                     pendingFileObject = null;
                     // Pre-fill modal input with current name without extension
@@ -1233,6 +1386,12 @@ document.addEventListener('DOMContentLoaded', () => {
     inputHiddenFile.addEventListener('change', (e) => {
         if (e.target.files.length > 0) {
             const file = e.target.files[0];
+            if (!isPdfFile(file)) {
+                showToast('Solo se permite adjuntar documentos PDF.', 'warning');
+                inputHiddenFile.value = '';
+                return;
+            }
+            docNameContext = 'checklist1';
             pendingFileObject = file;
             editingDocId = null;
 
@@ -1246,6 +1405,566 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
+    function getPostAprobacionDownloadButtons() {
+        return Array.from(document.querySelectorAll('.documentaria-documents .doc-download-btn'));
+    }
+
+    function getPostAprobacionDocNames() {
+        return getPostAprobacionDownloadButtons()
+            .map(btn => btn.dataset.docName)
+            .filter(Boolean);
+    }
+
+    function persistCurrentDocumentariaState() {
+        if (!currentDocumentariaSolicitud) return;
+        if (docChecklist2Comentario) {
+            docChecklist2ComentarioValue = docChecklist2Comentario.value.slice(0, 250);
+        }
+        currentDocumentariaSolicitud.checklist2Docs = docChecklist2Docs;
+        currentDocumentariaSolicitud.checklist2Comentario = docChecklist2ComentarioValue;
+        currentDocumentariaSolicitud.downloadedPostAprobacionDocs = Array.from(downloadedPostAprobacionDocs);
+        currentDocumentariaSolicitud.postAprobacionCollapsed = postAprobacionCollapsed;
+        currentDocumentariaSolicitud.postAprobacionCompletionPopupShown = postAprobacionCompletionPopupShown;
+        if (isOperacionesObservadoSolicitud(currentDocumentariaSolicitud)) {
+            currentDocumentariaSolicitud.operacionesRespuestaHabilitada = !!currentDocumentariaSolicitud.operacionesRespuestaHabilitada;
+            currentDocumentariaSolicitud.operacionesRespuestaEnviada = !!currentDocumentariaSolicitud.operacionesRespuestaEnviada;
+        }
+        actualizarEstadoFirmaChecklist2(currentDocumentariaSolicitud);
+        saveSolicitudFirmaAutomaticaState(currentDocumentariaSolicitud);
+    }
+
+    function updateOperacionesObservationState() {
+        const isOperaciones = isOperacionesObservadoSolicitud(currentDocumentariaSolicitud);
+        if (docOperacionesObservation) docOperacionesObservation.hidden = !isOperaciones;
+        if (!isOperaciones) return;
+
+        const observacion = currentDocumentariaSolicitud.operacionesObservacion || {};
+        if (docOpsAnalista) docOpsAnalista.textContent = observacion.analista || '-';
+        if (docOpsMotivo) docOpsMotivo.textContent = observacion.motivo || '-';
+        if (docOpsFechaHora) docOpsFechaHora.textContent = observacion.fechaHora || '-';
+        if (docOpsComentarioAnalista) docOpsComentarioAnalista.textContent = observacion.comentario || '-';
+
+        if (btnResponderObservacionOperaciones) {
+            const respuestaEnviada = isOperacionesRespuestaEnviada();
+            btnResponderObservacionOperaciones.disabled = respuestaEnviada;
+            btnResponderObservacionOperaciones.hidden = respuestaEnviada;
+            btnResponderObservacionOperaciones.title = respuestaEnviada
+                ? 'La respuesta ya fue enviada a operaciones.'
+                : 'Habilitar campo para responder la observación.';
+        }
+    }
+
+    function updateChecklist2ComentarioState() {
+        if (!docChecklist2Comentario) return;
+        const texto = docChecklist2Comentario.value.slice(0, 250);
+        if (texto !== docChecklist2Comentario.value) docChecklist2Comentario.value = texto;
+        docChecklist2ComentarioValue = texto;
+
+        if (docChecklist2ComentarioCounter) {
+            docChecklist2ComentarioCounter.textContent = `${texto.length}/250`;
+        }
+
+        const isOperaciones = isOperacionesObservadoSolicitud(currentDocumentariaSolicitud);
+        const respuestaHabilitada = isOperacionesRespuestaHabilitada();
+        const respuestaEnviada = isOperacionesRespuestaEnviada();
+        const comentarioReadonly = isChecklist2ReadOnly || (isOperaciones && !respuestaHabilitada);
+
+        docChecklist2Comentario.readOnly = comentarioReadonly;
+        docChecklist2Comentario.classList.toggle('is-readonly', comentarioReadonly);
+        docChecklist2Comentario.placeholder = comentarioReadonly
+            ? (isOperaciones ? 'Seleccione Responder para registrar el comentario' : 'Comentario enviado a operaciones')
+            : (isOperaciones ? 'Ingrese respuesta para operaciones' : 'Ingrese comentario para operaciones');
+
+        if (docChecklist2ComentarioLabel) {
+            docChecklist2ComentarioLabel.textContent = isOperaciones ? 'Respuesta a operaciones' : 'Comentario';
+        }
+
+        if (respuestaEnviada) {
+            docChecklist2Comentario.placeholder = 'Respuesta enviada a operaciones';
+        }
+    }
+
+    function areAllPostAprobacionDocsDownloaded() {
+        const docNames = getPostAprobacionDocNames();
+        return docNames.length > 0 && docNames.every(docName => downloadedPostAprobacionDocs.has(docName));
+    }
+
+    function isChecklist2Unlocked() {
+        return areAllPostAprobacionDocsDownloaded()
+            || !!(currentDocumentariaSolicitud && currentDocumentariaSolicitud.documentariaEnviadaOperaciones)
+            || isOperacionesObservadoSolicitud(currentDocumentariaSolicitud);
+    }
+
+    function isSolicitudEnFirma(solicitud) {
+        return String(solicitud?.etapa || '').toUpperCase() === 'FIRMA';
+    }
+
+    function updateDocumentariaTitleAndStage() {
+        if (!currentDocumentariaSolicitud) return;
+        const isOperaciones = isOperacionesObservadoSolicitud(currentDocumentariaSolicitud);
+        const isFirma = isSolicitudEnFirma(currentDocumentariaSolicitud);
+        const docEtapa = document.getElementById('docEtapa');
+
+        if (documentariaPageTitle) {
+            documentariaPageTitle.textContent = isOperaciones ? 'Operaciones' : (isFirma ? 'Firmas' : 'Bandeja documentaria');
+        }
+        if (docEtapa) {
+            docEtapa.textContent = currentDocumentariaSolicitud.etapa || 'DOCUMENTARIA';
+        }
+    }
+
+    function avanzarSolicitudEFE004AFirmaPendiente() {
+        if (!isSolicitudFirmaAutomatica(currentDocumentariaSolicitud)) return;
+        if (!areAllPostAprobacionDocsDownloaded()) return;
+
+        currentDocumentariaSolicitud.etapa = 'FIRMA';
+        if (!docChecklist2Docs.length) {
+            currentDocumentariaSolicitud.estado = 'PENDIENTE';
+        }
+        updateDocumentariaTitleAndStage();
+        saveSolicitudFirmaAutomaticaState(currentDocumentariaSolicitud);
+    }
+
+    function actualizarEstadoFirmaChecklist2(solicitud) {
+        if (!isSolicitudFirmaAutomatica(solicitud) || !isSolicitudEnFirma(solicitud)) return;
+        const tieneChecklist2 = Array.isArray(solicitud.checklist2Docs) && solicitud.checklist2Docs.length > 0;
+        solicitud.estado = tieneChecklist2 ? 'EN PROCESO' : 'PENDIENTE';
+    }
+
+    function updatePostAprobacionDownloadVisuals() {
+        getPostAprobacionDownloadButtons().forEach(btn => {
+            const downloaded = downloadedPostAprobacionDocs.has(btn.dataset.docName);
+            btn.classList.toggle('is-downloaded', downloaded);
+            btn.setAttribute('data-downloaded', String(downloaded));
+        });
+    }
+
+    function updatePostAprobacionCollapseState() {
+        const allDownloaded = areAllPostAprobacionDocsDownloaded();
+
+        if (!allDownloaded) {
+            postAprobacionCollapsed = false;
+        } else if (!docPostAprobacionCard || !docPostAprobacionCard.classList.contains('is-completed')) {
+            postAprobacionCollapsed = true;
+        }
+
+        if (docPostAprobacionCard) {
+            docPostAprobacionCard.classList.toggle('is-completed', allDownloaded);
+            docPostAprobacionCard.classList.toggle('is-collapsed', allDownloaded && postAprobacionCollapsed);
+        }
+
+        if (docPostAprobacionList) {
+            docPostAprobacionList.hidden = allDownloaded && postAprobacionCollapsed;
+        }
+
+        if (btnDescargarTodosDocs) {
+            btnDescargarTodosDocs.hidden = allDownloaded;
+        }
+
+        if (btnVerMasPostDocs) {
+            btnVerMasPostDocs.hidden = !allDownloaded;
+            const icon = btnVerMasPostDocs.querySelector('.material-icons-outlined');
+            if (allDownloaded && postAprobacionCollapsed) {
+                btnVerMasPostDocs.lastChild.textContent = 'Ver más';
+                if (icon) icon.textContent = 'expand_more';
+            } else {
+                btnVerMasPostDocs.lastChild.textContent = 'Ver menos';
+                if (icon) icon.textContent = 'expand_less';
+            }
+        }
+    }
+
+    function updateChecklist2Availability() {
+        const unlocked = isChecklist2Unlocked();
+
+        if (docChecklist2Card) {
+            docChecklist2Card.classList.toggle('is-locked', !unlocked);
+            docChecklist2Card.classList.toggle('is-unlocked', unlocked);
+            docChecklist2Card.classList.toggle('is-readonly', isChecklist2ReadOnly);
+        }
+        if (docChecklist2Subtitle) {
+            docChecklist2Subtitle.hidden = !unlocked;
+            docChecklist2Subtitle.textContent = isChecklist2ReadOnly
+                ? 'Documentos enviados a operaciones. Solo se permite ver o descargar.'
+                : 'Adjunta los documentos PDF requeridos para la etapa documentaria.';
+        }
+        if (docChecklist2Counter) docChecklist2Counter.hidden = !unlocked;
+        if (docChecklist2Content) docChecklist2Content.hidden = !unlocked;
+        updateOperacionesObservationState();
+        updateChecklist2ComentarioState();
+
+        if (!unlocked && docChecklist2Body) {
+            docChecklist2Body.innerHTML = '';
+        }
+        updateChecklist2SendButtonState();
+    }
+
+    function updateChecklist2SendButtonState() {
+        const unlocked = isChecklist2Unlocked();
+        const tieneDocumentos = docChecklist2Docs.length > 0;
+        const isOperaciones = isOperacionesObservadoSolicitud(currentDocumentariaSolicitud);
+        const respuestaHabilitada = isOperacionesRespuestaHabilitada();
+        const respuestaEnviada = isOperacionesRespuestaEnviada();
+
+        let enviarOperacionesDeshabilitado = !unlocked || !tieneDocumentos || isChecklist2ReadOnly;
+        if (isOperaciones) {
+            enviarOperacionesDeshabilitado = !unlocked || !tieneDocumentos || respuestaEnviada || !respuestaHabilitada;
+        }
+
+        if (docChecklist2Footer) {
+            docChecklist2Footer.hidden = isOperaciones ? false : enviarOperacionesDeshabilitado;
+        }
+
+        if (btnEnviarOperacionesChecklist2) {
+            btnEnviarOperacionesChecklist2.disabled = enviarOperacionesDeshabilitado;
+            btnEnviarOperacionesChecklist2.setAttribute('aria-disabled', String(enviarOperacionesDeshabilitado));
+            btnEnviarOperacionesChecklist2.title = respuestaEnviada
+                ? 'La respuesta ya fue enviada a operaciones.'
+                : (isOperaciones && !respuestaHabilitada
+                    ? 'Seleccione Responder para habilitar el envío.'
+                    : (tieneDocumentos ? 'Enviar documentos a operaciones' : 'Adjunte al menos un documento para enviar a operaciones'));
+        }
+    }
+
+    function mostrarPopupDocumentosPostAprobacionCompletos() {
+        modalTitle.textContent = 'Descarga completada';
+        modalBody.innerHTML = `
+            <div class="popup-solicitud-success">
+                <div class="popup-solicitud-icon">
+                    <span class="material-icons-outlined">check_circle</span>
+                </div>
+                <p class="popup-solicitud-text">Todos los documentos descargados continúa con etapa de firmas</p>
+            </div>
+        `;
+
+        document.getElementById('modalBtnCancel').style.display = 'none';
+        document.getElementById('modalBtnAction').style.display = 'inline-flex';
+        document.getElementById('modalBtnAction').textContent = 'Aceptar';
+
+        const oldActionBtn = document.getElementById('modalBtnAction');
+        const newActionBtn = oldActionBtn.cloneNode(true);
+        oldActionBtn.parentNode.replaceChild(newActionBtn, oldActionBtn);
+        newActionBtn.addEventListener('click', () => {
+            closeModal();
+            document.getElementById('modalBtnCancel').style.display = 'inline-flex';
+        });
+
+        modalOverlay.classList.add('active');
+        document.body.style.overflow = 'hidden';
+    }
+
+    function syncDocumentariaDownloadFlow() {
+        updatePostAprobacionDownloadVisuals();
+        updatePostAprobacionCollapseState();
+        updateChecklist2Availability();
+        if (isChecklist2Unlocked()) {
+            renderDocChecklist2();
+            if (!postAprobacionCompletionPopupShown && areAllPostAprobacionDocsDownloaded()) {
+                postAprobacionCompletionPopupShown = true;
+                avanzarSolicitudEFE004AFirmaPendiente();
+                persistCurrentDocumentariaState();
+                mostrarPopupDocumentosPostAprobacionCompletos();
+            } else if (areAllPostAprobacionDocsDownloaded()) {
+                avanzarSolicitudEFE004AFirmaPendiente();
+            }
+        }
+        persistCurrentDocumentariaState();
+    }
+
+    function markPostAprobacionDocDownloaded(docName) {
+        if (!docName) return;
+        downloadedPostAprobacionDocs.add(docName);
+        syncDocumentariaDownloadFlow();
+    }
+
+    function descargarDocumentoChecklist2(doc) {
+        if (!doc) return;
+        console.log(`Descarga solicitada de CheckList 2: ${doc.name}`);
+        showToast(`Descarga solicitada: ${doc.name}`, 'success');
+    }
+
+    function renderDocChecklist2() {
+        if (!docChecklist2Body || !isChecklist2Unlocked()) return;
+
+        docChecklist2Body.innerHTML = '';
+
+        docChecklist2Docs.forEach((doc, index) => {
+            const row = document.createElement('tr');
+            const acciones = isChecklist2ReadOnly ? `
+                        <button type="button" class="doc-checklist2-icon-btn" data-doc-checklist2-action="ver" data-index="${index}" title="Ver documento" aria-label="Ver documento">
+                            <span class="material-icons-outlined">visibility</span>
+                        </button>
+                        <button type="button" class="doc-checklist2-download-btn" data-doc-checklist2-action="descargar" data-index="${index}">
+                            <span class="material-icons-outlined">download</span>
+                            Descargar
+                        </button>
+            ` : `
+                        <button type="button" class="doc-checklist2-icon-btn" data-doc-checklist2-action="ver" data-index="${index}" title="Ver documento" aria-label="Ver documento">
+                            <span class="material-icons-outlined">visibility</span>
+                        </button>
+                        <button type="button" class="doc-checklist2-edit-btn" data-doc-checklist2-action="editar" data-index="${index}">Editar</button>
+                        <button type="button" class="doc-checklist2-icon-btn danger" data-doc-checklist2-action="eliminar" data-index="${index}" title="Eliminar documento" aria-label="Eliminar documento">
+                            <span class="material-icons-outlined">delete</span>
+                        </button>
+            `;
+
+            row.innerHTML = `
+                <td>
+                    <div class="documentaria-checklist2-file">
+                        <span class="material-icons-outlined">picture_as_pdf</span>
+                        <span>${escapeHtml(doc.name)}</span>
+                    </div>
+                </td>
+                <td>
+                    <div class="documentaria-checklist2-actions">
+                        ${acciones}
+                    </div>
+                </td>
+            `;
+            docChecklist2Body.appendChild(row);
+        });
+
+        if (!isChecklist2ReadOnly && docChecklist2Docs.length < DOC_CHECKLIST2_MAX) {
+            const emptyRow = document.createElement('tr');
+            emptyRow.innerHTML = `
+                <td class="documentaria-checklist2-empty">Adjuntar documento</td>
+                <td>
+                    <button type="button" class="doc-checklist2-upload-btn" data-doc-checklist2-action="adjuntar">
+                        <span class="material-icons-outlined">upload_file</span>
+                        Adjuntar documento
+                    </button>
+                </td>
+            `;
+            docChecklist2Body.appendChild(emptyRow);
+        } else if (!isChecklist2ReadOnly && docChecklist2Docs.length >= DOC_CHECKLIST2_MAX) {
+            const limitRow = document.createElement('tr');
+            limitRow.innerHTML = `
+                <td colspan="2" class="documentaria-checklist2-limit">Límite máximo de 15 documentos alcanzado.</td>
+            `;
+            docChecklist2Body.appendChild(limitRow);
+        }
+
+        if (docChecklist2Counter) {
+            docChecklist2Counter.textContent = `${docChecklist2Docs.length}/${DOC_CHECKLIST2_MAX} documentos`;
+        }
+        updateChecklist2ComentarioState();
+
+        updateChecklist2SendButtonState();
+
+        docChecklist2Body.querySelectorAll('[data-doc-checklist2-action]').forEach(btn => {
+            btn.addEventListener('click', () => {
+                const action = btn.dataset.docChecklist2Action;
+                const index = Number(btn.dataset.index);
+
+                if (action === 'adjuntar') {
+                    if (isChecklist2ReadOnly) return;
+                    if (!isChecklist2Unlocked()) return;
+                    if (docChecklist2Docs.length >= DOC_CHECKLIST2_MAX) return;
+                    docNameContext = 'checklist2';
+                    editingChecklist2Index = null;
+                    pendingChecklist2FileObject = null;
+                    if (docChecklist2FileInput) docChecklist2FileInput.click();
+                    return;
+                }
+
+                if (action === 'ver') {
+                    const doc = docChecklist2Docs[index];
+                    if (!doc) return;
+                    modalTitle.textContent = `Visualizar - ${doc.name}`;
+                    modalBody.innerHTML = `
+                        <div style="background-color: #f1f3f5; border: 1px solid var(--border-color); border-radius: 8px; height: 350px; display: flex; align-items: center; justify-content: center; flex-direction: column; gap: 12px; color: var(--text-secondary);">
+                            <span class="material-icons-outlined" style="font-size: 64px; color: var(--primary-blue);">picture_as_pdf</span>
+                            <p style="font-weight: 600;">[ Simulación de Visor PDF ]</p>
+                            <p style="font-size: 0.8rem;">Archivo: ${escapeHtml(doc.name)}</p>
+                        </div>
+                    `;
+                    document.getElementById('modalBtnCancel').textContent = 'Cerrar';
+                    document.getElementById('modalBtnCancel').style.display = 'inline-flex';
+                    document.getElementById('modalBtnAction').style.display = 'none';
+                    modalOverlay.classList.add('active');
+                    document.body.style.overflow = 'hidden';
+                    return;
+                }
+
+                if (action === 'descargar') {
+                    const doc = docChecklist2Docs[index];
+                    descargarDocumentoChecklist2(doc);
+                    return;
+                }
+
+                if (action === 'editar') {
+                    if (isChecklist2ReadOnly) return;
+                    const doc = docChecklist2Docs[index];
+                    if (!doc) return;
+                    docNameContext = 'checklist2';
+                    editingChecklist2Index = index;
+                    pendingChecklist2FileObject = null;
+                    if (docChecklist2FileInput) docChecklist2FileInput.click();
+                    return;
+                }
+
+                if (action === 'eliminar') {
+                    if (isChecklist2ReadOnly) return;
+                    if (!docChecklist2Docs[index]) return;
+                    docChecklist2Docs.splice(index, 1);
+                    if (currentDocumentariaSolicitud) {
+                        currentDocumentariaSolicitud.checklist2Docs = docChecklist2Docs;
+                        actualizarEstadoFirmaChecklist2(currentDocumentariaSolicitud);
+                        updateDocumentariaTitleAndStage();
+                    }
+                    persistCurrentDocumentariaState();
+                    renderDocChecklist2();
+                    showToast('Documento eliminado del CheckList 2.', 'info');
+                }
+            });
+        });
+    }
+
+    function volverABandejaEntradaDesdeDocumentaria() {
+        document.querySelectorAll('.module-page').forEach(p => p.classList.remove('active'));
+        document.getElementById('moduloBandeja').classList.add('active');
+        navItems.forEach(n => n.classList.remove('active'));
+        if (document.getElementById('navBandeja')) document.getElementById('navBandeja').classList.add('active');
+        renderBandejaNewTable(filteredBandejaData);
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+
+    function mostrarPopupExitoEnviarOperaciones() {
+        modalTitle.textContent = 'Envío exitoso';
+        modalBody.innerHTML = `
+            <div class="popup-solicitud-success">
+                <div class="popup-solicitud-icon">
+                    <span class="material-icons-outlined">check_circle</span>
+                </div>
+                <p class="popup-solicitud-text">La documentación fue enviada a operaciones correctamente.</p>
+            </div>
+        `;
+
+        document.getElementById('modalBtnCancel').style.display = 'none';
+        document.getElementById('modalBtnAction').style.display = 'inline-flex';
+        document.getElementById('modalBtnAction').textContent = 'Aceptar';
+
+        const oldActionBtn = document.getElementById('modalBtnAction');
+        const newActionBtn = oldActionBtn.cloneNode(true);
+        oldActionBtn.parentNode.replaceChild(newActionBtn, oldActionBtn);
+        newActionBtn.addEventListener('click', () => {
+            closeModal();
+            document.getElementById('modalBtnCancel').style.display = 'inline-flex';
+            volverABandejaEntradaDesdeDocumentaria();
+        });
+
+        modalOverlay.classList.add('active');
+        document.body.style.overflow = 'hidden';
+    }
+
+    function enviarChecklist2AOperaciones() {
+        if (!currentDocumentariaSolicitud || docChecklist2Docs.length === 0 || isChecklist2ReadOnly) return;
+
+        if (docChecklist2Comentario) {
+            docChecklist2ComentarioValue = docChecklist2Comentario.value.slice(0, 250);
+        }
+        currentDocumentariaSolicitud.documentariaEnviadaOperaciones = true;
+        currentDocumentariaSolicitud.checklist2Docs = docChecklist2Docs;
+        currentDocumentariaSolicitud.checklist2Comentario = docChecklist2ComentarioValue;
+        currentDocumentariaSolicitud.downloadedPostAprobacionDocs = Array.from(downloadedPostAprobacionDocs);
+        currentDocumentariaSolicitud.etapa = 'OPERACIONES';
+        currentDocumentariaSolicitud.estado = 'PENDIENTE';
+        if (isOperacionesObservadoSolicitud(currentDocumentariaSolicitud)) {
+            currentDocumentariaSolicitud.operacionesRespuestaEnviada = true;
+            currentDocumentariaSolicitud.operacionesRespuestaHabilitada = false;
+        }
+        isChecklist2ReadOnly = true;
+        persistCurrentDocumentariaState();
+        updateChecklist2Availability();
+        renderDocChecklist2();
+        mostrarPopupExitoEnviarOperaciones();
+    }
+
+    function mostrarPopupConfirmacionEnviarOperaciones() {
+        if (!btnEnviarOperacionesChecklist2 || btnEnviarOperacionesChecklist2.disabled) return;
+
+        modalTitle.textContent = 'Confirmar envío a operaciones';
+        modalBody.innerHTML = `
+            <div class="popup-solicitud-success">
+                <div class="popup-solicitud-icon">
+                    <span class="material-icons-outlined">help_outline</span>
+                </div>
+                <p class="popup-solicitud-text">¿Está seguro de enviar la documentación a operaciones?</p>
+            </div>
+        `;
+
+        document.getElementById('modalBtnCancel').style.display = 'inline-flex';
+        document.getElementById('modalBtnCancel').textContent = 'Cancelar';
+        document.getElementById('modalBtnAction').style.display = 'inline-flex';
+        document.getElementById('modalBtnAction').textContent = 'Aceptar';
+
+        const oldActionBtn = document.getElementById('modalBtnAction');
+        const newActionBtn = oldActionBtn.cloneNode(true);
+        oldActionBtn.parentNode.replaceChild(newActionBtn, oldActionBtn);
+        newActionBtn.addEventListener('click', enviarChecklist2AOperaciones);
+
+        modalOverlay.classList.add('active');
+        document.body.style.overflow = 'hidden';
+    }
+
+    if (btnEnviarOperacionesChecklist2) {
+        btnEnviarOperacionesChecklist2.addEventListener('click', mostrarPopupConfirmacionEnviarOperaciones);
+    }
+
+    if (btnResponderObservacionOperaciones) {
+        btnResponderObservacionOperaciones.addEventListener('click', () => {
+            if (!isOperacionesObservadoSolicitud(currentDocumentariaSolicitud) || isOperacionesRespuestaEnviada()) return;
+            currentDocumentariaSolicitud.operacionesRespuestaHabilitada = true;
+            updateOperacionesObservationState();
+            updateChecklist2ComentarioState();
+            updateChecklist2SendButtonState();
+            if (docChecklist2Comentario) {
+                docChecklist2Comentario.focus();
+            }
+            persistCurrentDocumentariaState();
+        });
+    }
+
+    if (docChecklist2Comentario) {
+        docChecklist2Comentario.addEventListener('input', () => {
+            if (isChecklist2ReadOnly) {
+                docChecklist2Comentario.value = docChecklist2ComentarioValue;
+                updateChecklist2ComentarioState();
+                return;
+            }
+            updateChecklist2ComentarioState();
+            persistCurrentDocumentariaState();
+        });
+    }
+
+    if (docChecklist2FileInput) {
+        docChecklist2FileInput.addEventListener('change', (e) => {
+            if (isChecklist2ReadOnly) {
+                docChecklist2FileInput.value = '';
+                return;
+            }
+            if (!isChecklist2Unlocked()) {
+                docChecklist2FileInput.value = '';
+                return;
+            }
+            if (e.target.files.length === 0) return;
+
+            const file = e.target.files[0];
+            if (!isPdfFile(file)) {
+                showToast('Solo se permite adjuntar documentos PDF.', 'warning');
+                docChecklist2FileInput.value = '';
+                pendingChecklist2FileObject = null;
+                return;
+            }
+
+            docNameContext = 'checklist2';
+            pendingChecklist2FileObject = file;
+            inputDocName.value = file.name.replace(/\.[^/.]+$/, '');
+            modalDocNameOverlay.classList.add('active');
+            inputDocName.focus();
+        });
+    }
+
     // Modal save document name handler
     btnSaveDocName.addEventListener('click', () => {
         const docNameValue = inputDocName.value.trim();
@@ -1256,6 +1975,51 @@ document.addEventListener('DOMContentLoaded', () => {
 
         // Ensure .pdf extension
         const finalName = docNameValue.toLowerCase().endsWith('.pdf') ? docNameValue : docNameValue + '.pdf';
+
+        if (docNameContext === 'checklist2') {
+            if (isChecklist2ReadOnly) {
+                showToast('La solicitud ya fue enviada a operaciones. Solo se permite visualizar o descargar.', 'warning');
+                return;
+            }
+            if (!pendingChecklist2FileObject) {
+                showToast('Debe seleccionar un documento PDF para registrarlo.', 'warning');
+                return;
+            }
+
+            if (editingChecklist2Index !== null) {
+                docChecklist2Docs[editingChecklist2Index] = {
+                    ...docChecklist2Docs[editingChecklist2Index],
+                    name: finalName,
+                    file: pendingChecklist2FileObject
+                };
+                showToast('Documento actualizado en CheckList 2.', 'success');
+            } else {
+                if (docChecklist2Docs.length >= DOC_CHECKLIST2_MAX) {
+                    showToast('Solo se permite adjuntar hasta 15 documentos.', 'warning');
+                    return;
+                }
+
+                docChecklist2Docs.push({
+                    id: 'DOC-CL2-' + Date.now(),
+                    name: finalName,
+                    file: pendingChecklist2FileObject
+                });
+                showToast('Documento adjuntado en CheckList 2.', 'success');
+            }
+
+            currentDocumentariaSolicitud.checklist2Docs = docChecklist2Docs;
+            actualizarEstadoFirmaChecklist2(currentDocumentariaSolicitud);
+            updateDocumentariaTitleAndStage();
+
+            modalDocNameOverlay.classList.remove('active');
+            if (docChecklist2FileInput) docChecklist2FileInput.value = '';
+            pendingChecklist2FileObject = null;
+            editingChecklist2Index = null;
+            docNameContext = null;
+            persistCurrentDocumentariaState();
+            renderDocChecklist2();
+            return;
+        }
 
         if (editingDocId !== null) {
             // Edit mode
@@ -1275,6 +2039,7 @@ document.addEventListener('DOMContentLoaded', () => {
         inputHiddenFile.value = '';
         pendingFileObject = null;
         editingDocId = null;
+        docNameContext = null;
         renderChecklistTable();
     });
 
@@ -1282,8 +2047,12 @@ document.addEventListener('DOMContentLoaded', () => {
     btnCancelDocName.addEventListener('click', () => {
         modalDocNameOverlay.classList.remove('active');
         inputHiddenFile.value = '';
+        if (docChecklist2FileInput) docChecklist2FileInput.value = '';
         pendingFileObject = null;
         editingDocId = null;
+        pendingChecklist2FileObject = null;
+        editingChecklist2Index = null;
+        docNameContext = null;
     });
 
     // Pasar a Riesgos sin validación OTP
@@ -1462,7 +2231,12 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function getEstadoLabel(estado) {
-        return estado.toUpperCase();
+        const estadoNormalizado = String(estado || '').trim().toUpperCase();
+        return estadoNormalizado === 'EN PROCESO' ? 'En proceso' : estadoNormalizado;
+    }
+
+    function getEstadoClass(estado) {
+        return String(estado || '').trim().toLowerCase().replace(/[\s_]+/g, '-');
     }
 
     function renderBandejaNewTable(data) {
@@ -1533,7 +2307,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 <td>${sol.tienda}</td>
                 <td>${sol.fecha}</td>
                 <td><span style="font-weight: 700; color: #475569; font-size: 0.78rem;">${sol.etapa}</span></td>
-                <td><span class="status-badge ${sol.estado.toLowerCase()}">${getEstadoLabel(sol.estado)}</span></td>
+                <td><span class="status-badge ${getEstadoClass(sol.estado)}">${getEstadoLabel(sol.estado)}</span></td>
                 <td>
                     <button type="button" class="revisar-link" data-id="${sol.id}" style="background: none; border: none; padding: 0; color: var(--accent-blue); font-weight: 600; cursor: pointer; font-size: 0.82rem;">Revisar</button>
                 </td>
@@ -1972,7 +2746,7 @@ document.addEventListener('DOMContentLoaded', () => {
             window.scrollTo({ top: 0, behavior: 'smooth' });
             showToast(`Continuando Simulación para ${solicitud.id}`, 'info');
 
-        } else if (solicitud.etapa === 'DOCUMENTARIA' && solicitud.estado === 'PENDIENTE') {
+        } else if ((solicitud.etapa === 'DOCUMENTARIA' && solicitud.estado === 'PENDIENTE') || solicitud.etapa === 'FIRMA' || solicitud.documentariaEnviadaOperaciones || isOperacionesObservadoSolicitud(solicitud)) {
             showBandejaDocumentaria(solicitud);
 
         } else if (solicitud.etapa === 'SOLICITUD' || solicitud.etapa === 'RIESGOS') {
@@ -2111,18 +2885,54 @@ document.addEventListener('DOMContentLoaded', () => {
         const docSolicitudId = document.getElementById('docSolicitudId');
         const docFechaSimulacion = document.getElementById('docFechaSimulacion');
         const docEtapa = document.getElementById('docEtapa');
+        const docResumenNumero = document.getElementById('docResumenNumero');
+        const docResumenCliente = document.getElementById('docResumenCliente');
         const docClienteNombre = document.getElementById('docClienteNombre');
         const docClienteNumero = document.getElementById('docClienteNumero');
         const docClienteTelefono = document.getElementById('docClienteTelefono');
+        const numeroDocumento = (solicitud.documento || 'DNI - 71865987').split(' - ')[1] || '71865987';
 
+        const isOperaciones = isOperacionesObservadoSolicitud(solicitud);
+
+        if (documentariaPageTitle) documentariaPageTitle.textContent = isOperaciones ? 'Operaciones' : (isSolicitudEnFirma(solicitud) ? 'Firmas' : 'Bandeja documentaria');
         if (docSolicitudId) docSolicitudId.textContent = solicitud.id || 'EFE004';
         if (docFechaSimulacion) docFechaSimulacion.textContent = solicitud.fecha || '22-05-2026 15:30:00';
         if (docEtapa) docEtapa.textContent = solicitud.etapa || 'DOCUMENTARIA';
-        if (docClienteNombre) docClienteNombre.value = 'Juan Julio Ramirez Gonzales';
-        if (docClienteNumero) docClienteNumero.value = (solicitud.documento || 'DNI - 71865987').split(' - ')[1] || '71865987';
+        if (docResumenNumero) docResumenNumero.textContent = numeroDocumento;
+        if (docResumenCliente) docResumenCliente.textContent = solicitud.cliente || 'Pérez García Juan';
+        if (docClienteNombre) docClienteNombre.value = solicitud.cliente || 'Juan Julio Ramirez Gonzales';
+        if (docClienteNumero) docClienteNumero.value = numeroDocumento;
         if (docClienteTelefono) docClienteTelefono.value = solicitud.telefono || '928775998';
 
+        currentDocumentariaSolicitud = solicitud;
+        if (isOperaciones && typeof solicitud.operacionesRespuestaHabilitada !== 'boolean') {
+            solicitud.operacionesRespuestaHabilitada = false;
+        }
+        if (isOperaciones && typeof solicitud.operacionesRespuestaEnviada !== 'boolean') {
+            solicitud.operacionesRespuestaEnviada = false;
+        }
+        isChecklist2ReadOnly = isOperaciones ? !!solicitud.operacionesRespuestaEnviada : !!solicitud.documentariaEnviadaOperaciones;
+        docChecklist2Docs = Array.isArray(solicitud.checklist2Docs) ? solicitud.checklist2Docs : [];
+        if (!Array.isArray(solicitud.checklist2Docs)) solicitud.checklist2Docs = docChecklist2Docs;
+        actualizarEstadoFirmaChecklist2(solicitud);
+        updateDocumentariaTitleAndStage();
+        saveSolicitudFirmaAutomaticaState(solicitud);
+        docChecklist2ComentarioValue = String(solicitud.checklist2Comentario || '').slice(0, 250);
+        if (docChecklist2Comentario) {
+            docChecklist2Comentario.value = docChecklist2ComentarioValue;
+            updateChecklist2ComentarioState();
+        }
+
+        downloadedPostAprobacionDocs.clear();
+        if (Array.isArray(solicitud.downloadedPostAprobacionDocs)) {
+            solicitud.downloadedPostAprobacionDocs.forEach(docName => downloadedPostAprobacionDocs.add(docName));
+        }
+        postAprobacionCollapsed = !!solicitud.postAprobacionCollapsed;
+        postAprobacionCompletionPopupShown = !!solicitud.postAprobacionCompletionPopupShown;
+
         setDocumentariaTab('vehiculo');
+        updateContratoGarantiaDownloadState();
+        syncDocumentariaDownloadFlow();
 
         document.querySelectorAll('.module-page').forEach(p => p.classList.remove('active'));
         const docPage = document.getElementById('moduloBandejaDocumentaria');
@@ -2156,15 +2966,144 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     });
 
+    let garantiaValidationAttempted = false;
+
+    function getGarantiaRequiredFields() {
+        return Array.from(document.querySelectorAll('[data-garantia-required="true"]'));
+    }
+
+    function isGarantiaFieldComplete(field) {
+        return String(field.value || '').trim() !== '';
+    }
+
+    function isGarantiaCompleta() {
+        const requiredFields = getGarantiaRequiredFields();
+        return requiredFields.length > 0 && requiredFields.every(isGarantiaFieldComplete);
+    }
+
+    function clearGarantiaRequiredHighlight(field) {
+        field.classList.remove('is-required-missing');
+        field.removeAttribute('aria-invalid');
+        const group = field.closest('.form-group');
+        if (group) group.classList.remove('field-required-missing');
+    }
+
+    function markGarantiaFieldRequired(field) {
+        field.classList.add('is-required-missing');
+        field.setAttribute('aria-invalid', 'true');
+        const group = field.closest('.form-group');
+        if (group) group.classList.add('field-required-missing');
+    }
+
+    function updateGarantiaRequiredHighlights() {
+        const missingFields = [];
+        getGarantiaRequiredFields().forEach(field => {
+            if (isGarantiaFieldComplete(field)) {
+                clearGarantiaRequiredHighlight(field);
+            } else {
+                missingFields.push(field);
+                if (garantiaValidationAttempted) markGarantiaFieldRequired(field);
+            }
+        });
+        return missingFields;
+    }
+
+    function highlightMissingGarantiaFields() {
+        garantiaValidationAttempted = true;
+        const missingFields = updateGarantiaRequiredHighlights();
+        if (!missingFields.length) return true;
+
+        setDocumentariaTab('vehiculo');
+        window.requestAnimationFrame(() => {
+            const firstMissing = missingFields[0];
+            firstMissing.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            firstMissing.focus({ preventScroll: true });
+        });
+        return false;
+    }
+
+    function updateContratoGarantiaDownloadState() {
+        const btnContratoGarantia = document.getElementById('btnDescargarContratoGarantia');
+        if (!btnContratoGarantia) return;
+
+        const habilitarDescarga = isGarantiaCompleta();
+        btnContratoGarantia.disabled = !habilitarDescarga;
+        btnContratoGarantia.classList.toggle('is-disabled', !habilitarDescarga);
+        btnContratoGarantia.setAttribute('aria-disabled', String(!habilitarDescarga));
+        btnContratoGarantia.title = habilitarDescarga
+            ? 'Descargar Contrato de garantía'
+            : 'Complete los datos del cuadro GARANTÍA para habilitar la descarga';
+
+        const icon = btnContratoGarantia.querySelector('.material-icons-outlined');
+        if (icon) icon.textContent = habilitarDescarga ? 'download' : 'lock';
+
+        const docIcon = document.querySelector('[data-doc-icon="contrato-garantia"]');
+        if (docIcon) {
+            docIcon.classList.toggle('warning', !habilitarDescarga);
+            docIcon.setAttribute('aria-label', habilitarDescarga ? 'Documento generado' : 'Documento pendiente');
+        }
+    }
+
+    function getDownloadablePostAprobacionDocs() {
+        return Array.from(document.querySelectorAll('.documentaria-documents .doc-download-btn'))
+            .filter(btn => !btn.disabled)
+            .map(btn => btn.dataset.docName)
+            .filter(Boolean);
+    }
+
+    function descargarDocumentoPostAprobacion(docName) {
+        if (!docName) return;
+        console.log(`Descarga solicitada: ${docName}`);
+    }
+
+    getGarantiaRequiredFields().forEach(field => {
+        const actualizarFlujoDocumentario = () => {
+            updateGarantiaRequiredHighlights();
+            updateContratoGarantiaDownloadState();
+            syncDocumentariaDownloadFlow();
+        };
+        field.addEventListener('input', actualizarFlujoDocumentario);
+        field.addEventListener('change', actualizarFlujoDocumentario);
+    });
+
+    document.querySelectorAll('.documentaria-documents .doc-download-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+            if (btn.disabled) return;
+            descargarDocumentoPostAprobacion(btn.dataset.docName);
+            markPostAprobacionDocDownloaded(btn.dataset.docName);
+        });
+    });
+
+    const btnDescargarTodosDocs = document.getElementById('btnDescargarTodosDocs');
+    if (btnDescargarTodosDocs) {
+        btnDescargarTodosDocs.addEventListener('click', () => {
+            if (!isGarantiaCompleta()) {
+                highlightMissingGarantiaFields();
+                return;
+            }
+
+            updateContratoGarantiaDownloadState();
+            const documentos = getDownloadablePostAprobacionDocs();
+            console.log('Descarga solicitada de documentos Post Aprobación:', documentos);
+            documentos.forEach(docName => downloadedPostAprobacionDocs.add(docName));
+            syncDocumentariaDownloadFlow();
+        });
+    }
+
+    if (btnVerMasPostDocs) {
+        btnVerMasPostDocs.addEventListener('click', () => {
+            postAprobacionCollapsed = !postAprobacionCollapsed;
+            updatePostAprobacionCollapseState();
+        });
+    }
+
+    updateContratoGarantiaDownloadState();
+    syncDocumentariaDownloadFlow();
+
     const btnVolverBandejaDocumentaria = document.getElementById('btnVolverBandejaDocumentaria');
     if (btnVolverBandejaDocumentaria) {
         btnVolverBandejaDocumentaria.addEventListener('click', () => {
-            document.querySelectorAll('.module-page').forEach(p => p.classList.remove('active'));
-            document.getElementById('moduloBandeja').classList.add('active');
-            navItems.forEach(n => n.classList.remove('active'));
-            if (document.getElementById('navBandeja')) document.getElementById('navBandeja').classList.add('active');
-            renderBandejaNewTable(filteredBandejaData);
-            window.scrollTo({ top: 0, behavior: 'smooth' });
+            volverABandejaEntradaDesdeDocumentaria();
         });
     }
 
@@ -2182,7 +3121,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     </div>
                     <div>
                         <p style="font-size: 0.75rem; color: var(--text-muted); margin-bottom: 4px;">Estado</p>
-                        <span class="status-badge ${solicitud.estado}">${getEstadoLabel(solicitud.estado)}</span>
+                        <span class="status-badge ${getEstadoClass(solicitud.estado)}">${getEstadoLabel(solicitud.estado)}</span>
                     </div>
                 </div>
                 <div style="height: 1px; background: var(--border-color);"></div>
@@ -2231,10 +3170,15 @@ document.addEventListener('DOMContentLoaded', () => {
         document.body.style.overflow = '';
         const cancelBtn = document.getElementById('modalBtnCancel');
         const actionBtn = document.getElementById('modalBtnAction');
-        if (cancelBtn) cancelBtn.style.display = 'inline-flex';
+        if (cancelBtn) {
+            cancelBtn.style.display = 'inline-flex';
+            cancelBtn.textContent = 'Cerrar';
+        }
         if (actionBtn) {
-            actionBtn.style.display = 'inline-flex';
-            actionBtn.textContent = 'Aceptar';
+            const cleanActionBtn = actionBtn.cloneNode(true);
+            cleanActionBtn.style.display = 'inline-flex';
+            cleanActionBtn.textContent = 'Aceptar';
+            actionBtn.parentNode.replaceChild(cleanActionBtn, actionBtn);
         }
     }
 

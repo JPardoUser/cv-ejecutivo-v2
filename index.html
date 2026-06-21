@@ -1276,28 +1276,38 @@
             <!-- ====== VIEW: BANDEJA DOCUMENTARIA ====== -->
             <section class="module-page" id="moduloBandejaDocumentaria">
                 <div class="documentaria-page">
+                    <div class="documentaria-summary-card">
+                        <div class="documentaria-summary-item documentaria-summary-solicitud">
+                            <span class="documentaria-summary-label">SOLICITUD</span>
+                            <strong id="docSolicitudId">EFE004</strong>
+                        </div>
+                        <div class="documentaria-summary-item">
+                            <span class="documentaria-summary-label">ETAPA</span>
+                            <strong class="doc-stage-badge" id="docEtapa">DOCUMENTARIA</strong>
+                        </div>
+                        <div class="documentaria-summary-item">
+                            <span class="documentaria-summary-label">N° Doc</span>
+                            <strong id="docResumenNumero">71865987</strong>
+                        </div>
+                        <div class="documentaria-summary-item">
+                            <span class="documentaria-summary-label">Cliente</span>
+                            <strong id="docResumenCliente">Pérez García Juan</strong>
+                        </div>
+                        <div class="documentaria-summary-item documentaria-summary-date">
+                            <span class="material-icons-outlined documentaria-summary-icon">calendar_today</span>
+                            <div>
+                                <span class="documentaria-summary-label">Fecha simulación</span>
+                                <strong id="docFechaSimulacion">22-05-2026 15:30:00</strong>
+                            </div>
+                        </div>
+                    </div>
+
                     <div class="documentaria-title-row">
-                        <h1 class="page-title documentaria-title">Bandeja documentaria</h1>
-                        <span class="documentaria-date">Fecha simulación: <strong id="docFechaSimulacion">22-05-2026 15:30:00</strong></span>
+                        <h1 class="page-title documentaria-title" id="documentariaPageTitle">Bandeja documentaria</h1>
                     </div>
 
                     <div class="documentaria-shell">
                         <div class="documentaria-main">
-                            <div class="documentaria-summary-card">
-                                <div class="documentaria-summary-item">
-                                    <span>SOLICITUD:</span>
-                                    <strong id="docSolicitudId">EFE004</strong>
-                                </div>
-                                <div class="documentaria-summary-item">
-                                    <span>ETAPA:</span>
-                                    <strong class="doc-stage-badge" id="docEtapa">DOCUMENTARIA</strong>
-                                </div>
-                                <div class="documentaria-progress" aria-hidden="true"><span></span></div>
-                                <div class="documentaria-summary-item right">
-                                    <span>USUARIO:</span>
-                                    <strong id="docUsuario">JPARDOL</strong>
-                                </div>
-                            </div>
 
                             <div class="documentaria-tabs" role="tablist" aria-label="Pestañas de bandeja documentaria">
                                 <button type="button" class="documentaria-tab active" data-doc-tab="vehiculo">
@@ -1346,19 +1356,19 @@
                                     </div>
                                     <div class="form-group">
                                         <label class="form-label">Color <span class="required">*</span></label>
-                                        <input class="form-control" type="text" placeholder="Ingrese color">
+                                        <input class="form-control" id="docGarantiaColor" data-garantia-required="true" type="text" placeholder="Ingrese color">
                                     </div>
                                     <div class="form-group">
                                         <label class="form-label">Tipo de vehículo <span class="required">*</span></label>
-                                        <select class="form-control"><option selected>Seleccione...</option></select>
+                                        <select class="form-control" id="docGarantiaTipoVehiculo" data-garantia-required="true"><option value="" selected>Seleccione...</option><option value="AUTO">Auto</option><option value="CAMIONETA">Camioneta</option><option value="SUV">SUV</option></select>
                                     </div>
                                     <div class="form-group">
                                         <label class="form-label">VIN <span class="required">*</span></label>
-                                        <input class="form-control" type="text" placeholder="Ingrese VIN">
+                                        <input class="form-control" id="docGarantiaVin" data-garantia-required="true" type="text" placeholder="Ingrese VIN">
                                     </div>
                                     <div class="form-group">
                                         <label class="form-label">N° de motor <span class="required">*</span></label>
-                                        <input class="form-control" type="text" placeholder="Ingrese N° motor">
+                                        <input class="form-control" id="docGarantiaMotor" data-garantia-required="true" type="text" placeholder="Ingrese N° motor">
                                     </div>
                                 </div>
                             </div>
@@ -1419,33 +1429,101 @@
                                 </div>
                             </div>
 
-                            <div class="documentaria-card documentaria-documents">
-                                <h3>Documentos generados para Post Aprobación:</h3>
-                                <ul>
-                                    <li><span>Carta de aprobación</span><div><button type="button" class="doc-icon-btn" aria-label="Documento generado"><span class="material-icons-outlined">description</span></button><button type="button" class="doc-view-btn">Ver</button></div></li>
-                                    <li><span>Contrato de crédito</span><div><button type="button" class="doc-icon-btn" aria-label="Documento generado"><span class="material-icons-outlined">description</span></button><button type="button" class="doc-view-btn">Ver</button></div></li>
-                                    <li><span>Pagaré</span><div><button type="button" class="doc-icon-btn" aria-label="Documento generado"><span class="material-icons-outlined">description</span></button><button type="button" class="doc-view-btn">Ver</button></div></li>
-                                    <li><span>Hoja resumen (TCEA)</span><div><button type="button" class="doc-icon-btn" aria-label="Documento generado"><span class="material-icons-outlined">description</span></button><button type="button" class="doc-view-btn">Ver</button></div></li>
-                                    <li><span>Cronograma preliminar</span><div><button type="button" class="doc-icon-btn" aria-label="Documento generado"><span class="material-icons-outlined">description</span></button><button type="button" class="doc-view-btn">Ver</button></div></li>
-                                    <li><span>Póliza de seguro vehicular</span><div><button type="button" class="doc-icon-btn" aria-label="Documento generado"><span class="material-icons-outlined">description</span></button><button type="button" class="doc-view-btn">Ver</button></div></li>
-                                    <li><span>Póliza de desgravamen</span><div><button type="button" class="doc-icon-btn" aria-label="Documento generado"><span class="material-icons-outlined">description</span></button><button type="button" class="doc-view-btn">Ver</button></div></li>
-                                    <li><span>Contrato de garantía</span><div><button type="button" class="doc-icon-btn warning" aria-label="Documento pendiente"><span class="material-icons-outlined">description</span></button><button type="button" class="doc-view-btn">Ver</button></div></li>
+                            <div class="documentaria-card documentaria-documents" id="docPostAprobacionCard">
+                                <div class="documentaria-documents-header">
+                                    <h3>Documentos generados para Post Aprobación:</h3>
+                                    <div class="documentaria-documents-actions">
+                                        <button type="button" class="doc-download-all-btn" id="btnDescargarTodosDocs">
+                                            <span class="material-icons-outlined">download</span>
+                                            Descargar todos
+                                        </button>
+                                        <button type="button" class="doc-toggle-post-btn" id="btnVerMasPostDocs" hidden>
+                                            <span class="material-icons-outlined">expand_more</span>
+                                            Ver más
+                                        </button>
+                                    </div>
+                                </div>
+                                <ul id="docPostAprobacionList">
+                                    <li><span>Carta de aprobación</span><div><button type="button" class="doc-icon-btn" aria-label="Documento generado"><span class="material-icons-outlined">description</span></button><button type="button" class="doc-download-btn" data-doc-name="Carta de aprobación"><span class="material-icons-outlined">download</span>Descargar</button></div></li>
+                                    <li><span>Contrato de crédito</span><div><button type="button" class="doc-icon-btn" aria-label="Documento generado"><span class="material-icons-outlined">description</span></button><button type="button" class="doc-download-btn" data-doc-name="Contrato de crédito"><span class="material-icons-outlined">download</span>Descargar</button></div></li>
+                                    <li><span>Pagaré</span><div><button type="button" class="doc-icon-btn" aria-label="Documento generado"><span class="material-icons-outlined">description</span></button><button type="button" class="doc-download-btn" data-doc-name="Pagaré"><span class="material-icons-outlined">download</span>Descargar</button></div></li>
+                                    <li><span>Hoja resumen (TCEA)</span><div><button type="button" class="doc-icon-btn" aria-label="Documento generado"><span class="material-icons-outlined">description</span></button><button type="button" class="doc-download-btn" data-doc-name="Hoja resumen (TCEA)"><span class="material-icons-outlined">download</span>Descargar</button></div></li>
+                                    <li><span>Cronograma preliminar</span><div><button type="button" class="doc-icon-btn" aria-label="Documento generado"><span class="material-icons-outlined">description</span></button><button type="button" class="doc-download-btn" data-doc-name="Cronograma preliminar"><span class="material-icons-outlined">download</span>Descargar</button></div></li>
+                                    <li><span>Póliza de seguro vehicular</span><div><button type="button" class="doc-icon-btn" aria-label="Documento generado"><span class="material-icons-outlined">description</span></button><button type="button" class="doc-download-btn" data-doc-name="Póliza de seguro vehicular"><span class="material-icons-outlined">download</span>Descargar</button></div></li>
+                                    <li><span>Póliza de desgravamen</span><div><button type="button" class="doc-icon-btn" aria-label="Documento generado"><span class="material-icons-outlined">description</span></button><button type="button" class="doc-download-btn" data-doc-name="Póliza de desgravamen"><span class="material-icons-outlined">download</span>Descargar</button></div></li>
+                                    <li><span>Contrato de garantía</span><div><button type="button" class="doc-icon-btn warning" data-doc-icon="contrato-garantia" aria-label="Documento pendiente"><span class="material-icons-outlined">description</span></button><button type="button" class="doc-download-btn is-disabled" id="btnDescargarContratoGarantia" data-doc-name="Contrato de garantía" disabled aria-disabled="true" title="Complete los datos del cuadro GARANTÍA para habilitar la descarga"><span class="material-icons-outlined">lock</span>Descargar</button></div></li>
                                 </ul>
                             </div>
 
-                            <div class="documentaria-card documentaria-firma">
-                                <h3>GESTIÓN DE FIRMA</h3>
-                                <div class="form-group">
-                                    <label class="form-label">Mecanismo de Firma</label>
-                                    <select class="form-control">
-                                        <option selected>Enviar a IBR – Todos el file</option>
-                                    </select>
+                            <div class="documentaria-card documentaria-checklist2 is-locked" id="docChecklist2Card">
+                                <div class="documentaria-checklist2-header">
+                                    <div>
+                                        <h3>CheckList 2</h3>
+                                        <p id="docChecklist2Subtitle" hidden>Adjunta los documentos PDF requeridos para la etapa documentaria.</p>
+                                    </div>
+                                    <span class="documentaria-checklist2-counter" id="docChecklist2Counter" hidden>0/15 documentos</span>
                                 </div>
-                                <button type="button" class="doc-send-btn">Enviar a firma</button>
+                                <div class="documentaria-checklist2-content" id="docChecklist2Content" hidden>
+                                    <table class="documentaria-checklist2-table" aria-label="Documentos adjuntos del CheckList 2">
+                                        <thead>
+                                            <tr>
+                                                <th>ARCHIVO PDF</th>
+                                                <th>ACCIÓN</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody id="docChecklist2Body">
+                                            <!-- Dynamic rows injected by JS -->
+                                        </tbody>
+                                    </table>
+                                    <div class="documentaria-checklist2-comment" id="docChecklist2CommentWrapper">
+                                        <div class="documentaria-checklist2-comment-header">
+                                            <label class="form-label" for="docChecklist2Comentario" id="docChecklist2ComentarioLabel">Comentario</label>
+                                            <span id="docChecklist2ComentarioCounter">0/250</span>
+                                        </div>
+                                        <textarea class="form-control documentaria-checklist2-textarea" id="docChecklist2Comentario" maxlength="250" rows="4" placeholder="Ingrese comentario para operaciones"></textarea>
+                                    </div>
+                                    <div class="documentaria-operations-observation" id="docOperacionesObservation" hidden>
+                                        <div class="documentaria-operations-observation-header">
+                                            <div>
+                                                <h4>Comentario de observaciones</h4>
+                                                <p>Detalle registrado por el analista de operaciones.</p>
+                                            </div>
+                                            <button type="button" class="btn btn-outline btn-responder-observacion" id="btnResponderObservacionOperaciones">
+                                                <span class="material-icons-outlined">reply</span>
+                                                Responder
+                                            </button>
+                                        </div>
+                                        <div class="documentaria-operations-observation-grid">
+                                            <div>
+                                                <span>Analista de operaciones</span>
+                                                <strong id="docOpsAnalista">-</strong>
+                                            </div>
+                                            <div>
+                                                <span>Motivo de observación</span>
+                                                <strong id="docOpsMotivo">-</strong>
+                                            </div>
+                                            <div>
+                                                <span>Fecha y hora</span>
+                                                <strong id="docOpsFechaHora">-</strong>
+                                            </div>
+                                        </div>
+                                        <div class="documentaria-operations-comment-box">
+                                            <span>Comentario del analista de operaciones</span>
+                                            <p id="docOpsComentarioAnalista">-</p>
+                                        </div>
+                                    </div>
+                                    <input type="file" id="docChecklist2FileInput" style="display: none;" accept="application/pdf">
+                                </div>
                             </div>
 
                             <div class="documentaria-actions">
                                 <button type="button" class="btn btn-outline" id="btnVolverBandejaDocumentaria">Volver a Bandeja</button>
+                                <div class="documentaria-checklist2-footer" id="docChecklist2Footer" hidden>
+                                    <button type="button" class="btn btn-primary doc-checklist2-send-btn" id="btnEnviarOperacionesChecklist2" disabled>
+                                        <span class="material-icons-outlined">send</span>
+                                        Enviar a operaciones
+                                    </button>
+                                </div>
                             </div>
                         </div>
 
