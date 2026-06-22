@@ -2843,6 +2843,43 @@ select.form-control {
     gap: 18px 20px;
 }
 
+
+.cuota-inicial-inline {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.cuota-inicial-inline #calcCuotaInicial {
+    flex: 1;
+    min-width: 0;
+}
+
+.cuota-inicial-percent {
+    width: 86px;
+    flex: 0 0 86px;
+    text-align: center;
+    font-weight: 700;
+    color: var(--primary-blue);
+    background: #eef4ff;
+}
+
+.cuota-inicial-percent:read-only {
+    cursor: default;
+}
+
+@media (max-width: 768px) {
+    .cuota-inicial-inline {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    .cuota-inicial-percent {
+        width: 100%;
+        flex-basis: auto;
+    }
+}
+
 .calculo-ingreso-title {
     margin-top: 28px;
     padding-top: 22px;

@@ -385,7 +385,10 @@
                                 </div>
                                 <div class="form-group">
                                     <label class="form-label" for="calcCuotaInicial">Monto de cuota inicial</label>
-                                    <input type="text" class="form-control" id="calcCuotaInicial" value="6500.00">
+                                    <div class="cuota-inicial-inline">
+                                        <input type="text" class="form-control" id="calcCuotaInicial" value="6500.00">
+                                        <input type="text" class="form-control cuota-inicial-percent" id="calcCuotaInicialPorcentaje" value="43.33%" readonly title="Porcentaje de cuota inicial sobre el precio del vehículo">
+                                    </div>
                                 </div>
                             </div>
                         </section>
@@ -396,20 +399,20 @@
                                 <div class="form-group">
                                     <label class="form-label" for="calcTipoSeguroVehicular">Tipo de seguro vehicular</label>
                                     <select class="form-control" id="calcTipoSeguroVehicular">
-                                        <option value="PROPIO" selected>Propio</option>
-                                        <option value="ENDOSADO">Endosado</option>
-                                        <option value="FINANCIADO">Financiado</option>
+                                        <option value="BANCO" selected>Banco</option>
+                                        <option value="ENDOSO">Endoso</option>
                                     </select>
                                 </div>
                                 <div class="form-group">
-                                    <label class="form-label" for="calcSeguroVehicular">Porcentaje del seguro vehicular</label>
-                                    <input type="text" class="form-control" id="calcSeguroVehicular" value="12.5%">
+                                    <label class="form-label" for="calcPorcentajeSeguroVehicular">Porcentaje de seguro</label>
+                                    <input type="text" class="form-control" id="calcPorcentajeSeguroVehicular" value="0.00%" placeholder="00.00%" inputmode="decimal">
                                 </div>
                                 <div class="form-group">
                                     <label class="form-label" for="calcDesgravamen">Seguro de desgravamen</label>
                                     <select class="form-control" id="calcDesgravamen">
-                                        <option value="INDIVIDUAL" selected>Individual</option>
-                                        <option value="DEVOLUCION">Devolución</option>
+                                        <option value="SI" selected>Sí</option>
+                                        <option value="ENDOSO">Endoso</option>
+                                        <option value="NO">No</option>
                                     </select>
                                 </div>
                             </div>

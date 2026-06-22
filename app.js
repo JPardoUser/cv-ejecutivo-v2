@@ -1200,6 +1200,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function recalcularResultadoCalculo(mostrarToast = true) {
+        validarCuotaInicialContraPrecio(false);
         const tea = parseMoneyValue(document.getElementById('calcTea').value) / 100;
         const precioUsd = parseMoneyValue(document.getElementById('calcPrecioUsd').value);
         const inicial = parseMoneyValue(document.getElementById('calcCuotaInicial').value);
@@ -1270,6 +1271,85 @@ document.addEventListener('DOMContentLoaded', () => {
             } else {
                 actualizarCapacidadCuotaMaximaCalculo(false);
             }
+        });
+    }
+
+    function normalizarDecimalInput(value) {
+        let normalizedValue = String(value || '').replace(/,/g, '.').replace(/[^\d.]/g, '');
+        const firstDotIndex = normalizedValue.indexOf('.');
+        if (firstDotIndex !== -1) {
+            normalizedValue = normalizedValue.slice(0, firstDotIndex + 1) + normalizedValue.slice(firstDotIndex + 1).replace(/\./g, '');
+            const [integerPart, decimalPart = ''] = normalizedValue.split('.');
+            normalizedValue = `${integerPart}.${decimalPart.slice(0, 2)}`;
+        }
+        return normalizedValue;
+    }
+
+    function formatearDecimal(value) {
+        const parsedValue = Number.parseFloat(normalizarDecimalInput(value));
+        return Number.isFinite(parsedValue) ? parsedValue.toFixed(2) : '0.00';
+    }
+
+    function formatearPorcentaje(value) {
+        return `${formatearDecimal(value)}%`;
+    }
+
+    function actualizarPorcentajeCuotaInicial() {
+        const precioInput = document.getElementById('calcPrecioUsd');
+        const cuotaInput = document.getElementById('calcCuotaInicial');
+        const porcentajeInput = document.getElementById('calcCuotaInicialPorcentaje');
+        if (!precioInput || !cuotaInput || !porcentajeInput) return;
+
+        const precioVehiculo = parseMoneyValue(precioInput.value);
+        const cuotaInicial = parseMoneyValue(cuotaInput.value);
+        const porcentaje = precioVehiculo > 0 ? Math.min((cuotaInicial / precioVehiculo) * 100, 100) : 0;
+        porcentajeInput.value = `${porcentaje.toFixed(2)}%`;
+    }
+
+    function validarCuotaInicialContraPrecio(mostrarToast = true) {
+        const precioInput = document.getElementById('calcPrecioUsd');
+        const cuotaInput = document.getElementById('calcCuotaInicial');
+        if (!precioInput || !cuotaInput) return true;
+
+        const precioVehiculo = parseMoneyValue(precioInput.value);
+        const cuotaInicial = parseMoneyValue(cuotaInput.value);
+
+        if (precioVehiculo > 0 && cuotaInicial > precioVehiculo) {
+            cuotaInput.value = precioVehiculo.toFixed(2);
+            actualizarPorcentajeCuotaInicial();
+            if (mostrarToast) {
+                showToast('La cuota inicial no puede superar el 100% del precio del vehículo.', 'warning');
+            }
+            return false;
+        }
+
+        actualizarPorcentajeCuotaInicial();
+        return true;
+    }
+
+    const calcPrecioVehiculoInput = document.getElementById('calcPrecioUsd');
+    const calcCuotaInicialInput = document.getElementById('calcCuotaInicial');
+    [calcPrecioVehiculoInput, calcCuotaInicialInput].forEach(input => {
+        if (!input) return;
+        input.addEventListener('input', (e) => {
+            e.target.value = normalizarDecimalInput(e.target.value);
+            validarCuotaInicialContraPrecio(true);
+        });
+        input.addEventListener('blur', (e) => {
+            e.target.value = formatearDecimal(e.target.value);
+            validarCuotaInicialContraPrecio(true);
+        });
+    });
+    actualizarPorcentajeCuotaInicial();
+
+    const calcPorcentajeSeguroVehicularInput = document.getElementById('calcPorcentajeSeguroVehicular');
+    if (calcPorcentajeSeguroVehicularInput) {
+        calcPorcentajeSeguroVehicularInput.addEventListener('input', (e) => {
+            e.target.value = normalizarDecimalInput(e.target.value);
+        });
+
+        calcPorcentajeSeguroVehicularInput.addEventListener('blur', (e) => {
+            e.target.value = formatearPorcentaje(e.target.value);
         });
     }
 
