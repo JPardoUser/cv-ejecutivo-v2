@@ -475,6 +475,71 @@ document.addEventListener('DOMContentLoaded', () => {
         };
     }
 
+    function setSelectValueByText(selectId, value) {
+        const select = document.getElementById(selectId);
+        if (!select || !value) return;
+
+        const normalizedValue = String(value).trim().toUpperCase();
+        const matchedOption = Array.from(select.options).find(option =>
+            option.value.trim().toUpperCase() === normalizedValue ||
+            option.textContent.trim().toUpperCase() === normalizedValue
+        );
+
+        if (matchedOption) {
+            select.value = matchedOption.value;
+            return;
+        }
+
+        const newOption = new Option(String(value).trim(), String(value).trim());
+        select.add(newOption);
+        select.value = newOption.value;
+    }
+
+    function getTipoCambioCalculoValue() {
+        const calcTipoCambioInput = document.getElementById('calcTipoCambio');
+        return calcTipoCambioInput && calcTipoCambioInput.value.trim()
+            ? calcTipoCambioInput.value.trim()
+            : '3.78';
+    }
+
+    function getTotalFinanciamientoCalculoValue() {
+        const calcMontoFinanciarInput = document.getElementById('calcMontoFinanciar');
+        const totalValue = calcMontoFinanciarInput ? calcMontoFinanciarInput.value.trim() : '';
+        return totalValue && totalValue !== 'S/ 0.00' ? totalValue : 'S/ 21,480.00';
+    }
+
+    function getSeguroVehicularCalculoValue() {
+        const calcSeguroVehicular = document.getElementById('calcTipoSeguroVehicular');
+        const value = calcSeguroVehicular ? String(calcSeguroVehicular.value || '').trim().toUpperCase() : '';
+        return value === 'ENDOSO' ? 'ENDOSO' : 'BANCO';
+    }
+
+    function getSeguroDesgravamenCalculoValue() {
+        const calcDesgravamen = document.getElementById('calcDesgravamen');
+        const value = calcDesgravamen ? String(calcDesgravamen.value || '').trim().toUpperCase() : '';
+        if (value === 'ENDOSO') return 'ENDOSO';
+        if (value === 'NO') return 'NO';
+        return 'SI';
+    }
+
+    function aplicarSegurosSolicitudDesdeCalculo(solicitud = null) {
+        const regSegVehicular = document.getElementById('regSegVehicular');
+        const regSegDesgravamen = document.getElementById('regSegDesgravamen');
+
+        if (regSegVehicular) {
+            regSegVehicular.value = solicitud?.seguroVehicular || getSeguroVehicularCalculoValue();
+        }
+        if (regSegDesgravamen) {
+            regSegDesgravamen.value = solicitud?.seguroDesgravamen || getSeguroDesgravamenCalculoValue();
+        }
+    }
+
+    function aplicarUbicacionSolicitud(concesionario, sucursal) {
+        const ubicacion = getSimulacionUbicacion();
+        setSelectValueByText('regVehConcesionario', concesionario || ubicacion.concesionario || 'Hyundai');
+        setSelectValueByText('regVehTienda', sucursal || ubicacion.sucursal || 'Puruchuco');
+    }
+
     function updateHeaderUbicacion() {
         if (!headerLocationText) return;
         const { concesionario, sucursal } = getSimulacionUbicacion();
@@ -890,6 +955,7 @@ document.addEventListener('DOMContentLoaded', () => {
             currentSol.etapa = 'SOLICITUD';
             currentSol.estado = 'PENDIENTE';
             currentSol.cartera = carreteraActual;
+            currentSol.tipoCambio = getTipoCambioCalculoValue();
         }
 
         // Set top header info bar
@@ -938,19 +1004,19 @@ document.addEventListener('DOMContentLoaded', () => {
 
         // Pre-populate Vehiculo
         document.getElementById('regVehEstado').value = "Nuevo";
-        document.getElementById('regVehConcesionario').value = (currentSol?.concesionario || "HYUNDAI").toUpperCase();
-        document.getElementById('regVehTienda').value = (currentSol?.tienda || "PURUCHUCO").toUpperCase();
+        aplicarUbicacionSolicitud(currentSol?.concesionario, currentSol?.tienda);
         document.getElementById('regVehVendedor').value = "ALOCHA";
         document.getElementById('regVehMarca').value = "Toyota";
         document.getElementById('regVehModelo').value = "Corolla";
         document.getElementById('regVehAnio').value = "2026";
         document.getElementById('regVehTarjetaNombre').value = "TITULAR";
+        actualizarDatosTerceroPropiedad(true);
 
         // Pre-populate Simulación
         document.getElementById('regSimProducto').value = "Credito Vehicular";
         document.getElementById('regSimCampana').value = "SUV Mayo 2026";
-        document.getElementById('regSimMoneda').value = "USD";
-        document.getElementById('regSimTipoCambio').value = "3.78";
+        document.getElementById('regSimMoneda').value = "Soles (S/.)";
+        document.getElementById('regSimTipoCambio').value = getTipoCambioCalculoValue();
         document.getElementById('regSimPrecioVeh').value = "$ 28,000.00";
         document.getElementById('regSimCuotaInicial').value = "$ 8,000.00";
         document.getElementById('regSimTea').value = "12.80%";
@@ -959,19 +1025,18 @@ document.addEventListener('DOMContentLoaded', () => {
 
         // Pre-populate Gastos
         document.getElementById('regGastosNotariales').value = "SI";
-        document.getElementById('regGastosRegistrales').value = "SI";
-        document.getElementById('regGastosDelivery').value = "SI";
+        document.getElementById('regGastosRegistrales').value = currentSol?.gastosRegistrales || "S/ 0.00";
+        document.getElementById('regGastosDelivery').value = currentSol?.gastosDelivery || "S/ 0.00";
         document.getElementById('regPlanGpx').value = "Premium";
         document.getElementById('regGastosInclGpx').value = "$ 650.00";
         document.getElementById('regKitMantenimiento').value = "No";
         document.getElementById('regCuotasDobles').value = "No";
         document.getElementById('regIncluirPortes').value = "No";
-        document.getElementById('regTotalFinanciamiento').value = "$ 21,480.00";
+        document.getElementById('regTotalFinanciamiento').value = getTotalFinanciamientoCalculoValue();
 
         // Pre-populate Seguros
-        document.getElementById('regSegVehicular').value = "Propio";
+        aplicarSegurosSolicitudDesdeCalculo(currentSol);
         document.getElementById('regSegVehCosto').value = "S/ 1,200.00";
-        document.getElementById('regSegDesgravamen').value = "SI";
         document.getElementById('regSegDesgProd').value = "Individual";
         document.getElementById('regSegDesgCosto').value = "$ 0.00";
         document.getElementById('regSegOptativo').value = "No";
@@ -1353,6 +1418,12 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
+    ['calcTipoSeguroVehicular', 'calcDesgravamen'].forEach(id => {
+        const control = document.getElementById(id);
+        if (!control) return;
+        control.addEventListener('change', () => aplicarSegurosSolicitudDesdeCalculo());
+    });
+
     // ========================================
     // REGISTRO DE SOLICITUD - Handlers & Logic
     // ========================================
@@ -1363,6 +1434,41 @@ document.addEventListener('DOMContentLoaded', () => {
             e.target.value = e.target.value.replace(/\D/g, '');
             clearCelularSolicitudHighlight();
         });
+    }
+
+    const regVehTarjetaNombreSelect = document.getElementById('regVehTarjetaNombre');
+    const terceroPropiedadFields = [
+        'regVehTerceroTipoDoc',
+        'regVehTerceroNumero',
+        'regVehTerceroNombres',
+        'regVehTerceroApePaterno',
+        'regVehTerceroApeMaterno'
+    ];
+
+    function actualizarDatosTerceroPropiedad(clearWhenHidden = false) {
+        const tarjetaSelect = document.getElementById('regVehTarjetaNombre');
+        const terceroData = document.getElementById('regVehTerceroData');
+        if (!tarjetaSelect || !terceroData) return;
+
+        const esTercero = tarjetaSelect.value === 'TERCERO';
+        terceroData.style.display = esTercero ? 'flex' : 'none';
+
+        terceroPropiedadFields.forEach(fieldId => {
+            const field = document.getElementById(fieldId);
+            if (!field) return;
+            field.disabled = isSolicitudReadOnly || !esTercero;
+            if (!esTercero && clearWhenHidden && fieldId !== 'regVehTerceroTipoDoc') {
+                field.value = '';
+            }
+            if (!esTercero && fieldId === 'regVehTerceroTipoDoc') {
+                field.value = 'DNI';
+            }
+        });
+    }
+
+    if (regVehTarjetaNombreSelect) {
+        regVehTarjetaNombreSelect.addEventListener('change', () => actualizarDatosTerceroPropiedad(true));
+        actualizarDatosTerceroPropiedad(false);
     }
 
     function isRiesgosPendienteSolicitud(solicitud) {
@@ -2946,6 +3052,12 @@ document.addEventListener('DOMContentLoaded', () => {
             existingSol.telefono = celularText;
             existingSol.concesionario = concesionarioStr;
             existingSol.tienda = tiendaStr;
+            existingSol.vendedor = document.getElementById('regVehVendedor')?.value || existingSol.vendedor;
+            existingSol.tipoCambio = document.getElementById('regSimTipoCambio')?.value || existingSol.tipoCambio;
+            existingSol.gastosRegistrales = document.getElementById('regGastosRegistrales')?.value || existingSol.gastosRegistrales;
+            existingSol.gastosDelivery = document.getElementById('regGastosDelivery')?.value || existingSol.gastosDelivery;
+            existingSol.seguroVehicular = document.getElementById('regSegVehicular')?.value || existingSol.seguroVehicular;
+            existingSol.seguroDesgravamen = document.getElementById('regSegDesgravamen')?.value || existingSol.seguroDesgravamen;
             registrarComentarioEjecutivoSolicitud(existingSol, comentarioRegistro, fechaStr);
             
             // Set the correct calculated amount from the form
@@ -2965,7 +3077,13 @@ document.addEventListener('DOMContentLoaded', () => {
                 etapa: 'RIESGOS',
                 telefono: celularText,
                 concesionario: concesionarioStr,
-                tienda: tiendaStr
+                tienda: tiendaStr,
+                vendedor: document.getElementById('regVehVendedor')?.value || 'ALOCHA',
+                tipoCambio: document.getElementById('regSimTipoCambio')?.value || getTipoCambioCalculoValue(),
+                gastosRegistrales: document.getElementById('regGastosRegistrales')?.value || 'S/ 0.00',
+                gastosDelivery: document.getElementById('regGastosDelivery')?.value || 'S/ 0.00',
+                seguroVehicular: document.getElementById('regSegVehicular')?.value || getSeguroVehicularCalculoValue(),
+                seguroDesgravamen: document.getElementById('regSegDesgravamen')?.value || getSeguroDesgravamenCalculoValue()
             };
             registrarComentarioEjecutivoSolicitud(newSol, comentarioRegistro, fechaStr);
             solicitudes.unshift(newSol);
@@ -3394,6 +3512,24 @@ document.addEventListener('DOMContentLoaded', () => {
         return `S/ ${Number(amount || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
     }
 
+    function setupSolicitudSolesInput(inputId) {
+        const input = document.getElementById(inputId);
+        if (!input) return;
+
+        input.addEventListener('input', (event) => {
+            event.target.value = event.target.value
+                .replace(/[^0-9.]/g, '')
+                .replace(/(\..*)\./g, '$1');
+        });
+
+        input.addEventListener('blur', (event) => {
+            event.target.value = formatSoles(parseCurrencyValue(event.target.value));
+        });
+    }
+
+    setupSolicitudSolesInput('regGastosRegistrales');
+    setupSolicitudSolesInput('regGastosDelivery');
+
     function updateTotalIngresos() {
         const totalEl = document.getElementById('totalIngresosTitular');
         if (!totalEl) return;
@@ -3528,6 +3664,10 @@ document.addEventListener('DOMContentLoaded', () => {
                 currentSol.cartera = normalizarCarretera(document.getElementById('regCartera')?.textContent || currentSol.cartera || 'EXPRESS');
                 const celular = document.getElementById('regCelular').value.trim();
                 if (celular) currentSol.telefono = celular;
+                currentSol.concesionario = document.getElementById('regVehConcesionario')?.value || currentSol.concesionario;
+                currentSol.tienda = document.getElementById('regVehTienda')?.value || currentSol.tienda;
+                currentSol.vendedor = document.getElementById('regVehVendedor')?.value || currentSol.vendedor;
+                currentSol.tipoCambio = document.getElementById('regSimTipoCambio')?.value || currentSol.tipoCambio;
             }
         }
     }
@@ -3574,6 +3714,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
             }
         });
+        actualizarDatosTerceroPropiedad(false);
     }
 
     // ============================
@@ -3694,19 +3835,19 @@ document.addEventListener('DOMContentLoaded', () => {
 
             // Pre-populate Vehiculo using Concesionario/Tienda from the solicitation
             document.getElementById('regVehEstado').value = "Nuevo";
-            document.getElementById('regVehConcesionario').value = (solicitud.concesionario || 'HYUNDAI').toUpperCase();
-            document.getElementById('regVehTienda').value = (solicitud.tienda || 'PURUCHUCO').toUpperCase();
+            aplicarUbicacionSolicitud(solicitud.concesionario, solicitud.tienda);
             document.getElementById('regVehVendedor').value = "ALOCHA";
             document.getElementById('regVehMarca').value = "Toyota";
             document.getElementById('regVehModelo').value = "Corolla";
             document.getElementById('regVehAnio').value = "2026";
             document.getElementById('regVehTarjetaNombre').value = "TITULAR";
+        actualizarDatosTerceroPropiedad(true);
 
             // Pre-populate Simulación
             document.getElementById('regSimProducto').value = "Credito Vehicular";
             document.getElementById('regSimCampana').value = "SUV Mayo 2026";
-            document.getElementById('regSimMoneda').value = "USD";
-            document.getElementById('regSimTipoCambio').value = "3.78";
+            document.getElementById('regSimMoneda').value = "Soles (S/.)";
+            document.getElementById('regSimTipoCambio').value = solicitud.tipoCambio || getTipoCambioCalculoValue();
             document.getElementById('regSimPrecioVeh').value = (solicitud.monto || '$ 28,000.00').replace('S/', '$');
             document.getElementById('regSimCuotaInicial').value = "$ 8,000.00";
             document.getElementById('regSimTea').value = "12.80%";
@@ -3715,19 +3856,18 @@ document.addEventListener('DOMContentLoaded', () => {
 
             // Pre-populate Gastos
             document.getElementById('regGastosNotariales').value = "SI";
-            document.getElementById('regGastosRegistrales').value = "SI";
-            document.getElementById('regGastosDelivery').value = "SI";
+            document.getElementById('regGastosRegistrales').value = solicitud.gastosRegistrales || "S/ 0.00";
+            document.getElementById('regGastosDelivery').value = solicitud.gastosDelivery || "S/ 0.00";
             document.getElementById('regPlanGpx').value = "Premium";
             document.getElementById('regGastosInclGpx').value = "$ 650.00";
             document.getElementById('regKitMantenimiento').value = "No";
             document.getElementById('regCuotasDobles').value = "No";
             document.getElementById('regIncluirPortes').value = "No";
-            document.getElementById('regTotalFinanciamiento').value = "$ 21,480.00";
+            document.getElementById('regTotalFinanciamiento').value = solicitud.totalFinanciamiento || 'S/ 21,480.00';
 
             // Pre-populate Seguros
-            document.getElementById('regSegVehicular').value = "Propio";
+            aplicarSegurosSolicitudDesdeCalculo(solicitud);
             document.getElementById('regSegVehCosto').value = "S/ 1,200.00";
-            document.getElementById('regSegDesgravamen').value = "SI";
             document.getElementById('regSegDesgProd').value = "Individual";
             document.getElementById('regSegDesgCosto').value = "$ 0.00";
             document.getElementById('regSegOptativo').value = "No";

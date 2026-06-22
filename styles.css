@@ -2095,6 +2095,13 @@ select.form-control {
     width: 100%;
 }
 
+
+.tercero-propiedad-grid {
+    margin-top: 18px;
+    padding-top: 18px;
+    border-top: 1px solid var(--border-light);
+}
+
 /* Custom disabled/readonly styles for look & feel match */
 .form-control.disabled,
 .form-control:disabled,
