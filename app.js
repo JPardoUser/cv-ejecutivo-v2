@@ -759,6 +759,66 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
+    function setEstadoCivilCasadoDesdeConyuge() {
+        const regEstadoCivilEl = document.getElementById('regEstadoCivil');
+        if (!regEstadoCivilEl) return;
+        regEstadoCivilEl.value = 'CASADO';
+        regEstadoCivilEl.dispatchEvent(new Event('change'));
+    }
+
+    function limpiarConyugeSolicitud() {
+        const regConyugeCard = document.getElementById('regConyugeCard');
+        if (regConyugeCard) regConyugeCard.style.display = 'none';
+        ['regConTipoDoc', 'regConNroDoc', 'regConApePaterno', 'regConApeMaterno', 'regConFechaNac'].forEach(id => {
+            const field = document.getElementById(id);
+            if (field) field.value = '';
+        });
+    }
+
+    function aplicarConyugeSolicitud(conyuge) {
+        const regConyugeCard = document.getElementById('regConyugeCard');
+        if (!regConyugeCard) return;
+
+        const tieneConyugeSolicitud = !!(conyuge && conyuge.nroDoc);
+        if (!tieneConyugeSolicitud) {
+            limpiarConyugeSolicitud();
+            return;
+        }
+
+        regConyugeCard.style.display = 'block';
+        const regConTipoDoc = document.getElementById('regConTipoDoc');
+        const regConNroDoc = document.getElementById('regConNroDoc');
+        const regConApePaterno = document.getElementById('regConApePaterno');
+        const regConApeMaterno = document.getElementById('regConApeMaterno');
+        const regConFechaNac = document.getElementById('regConFechaNac');
+
+        if (regConTipoDoc) regConTipoDoc.value = conyuge.tipoDoc || 'DNI';
+        if (regConNroDoc) regConNroDoc.value = conyuge.nroDoc || '';
+        if (regConApePaterno) regConApePaterno.value = conyuge.apellidoPaterno || '';
+        if (regConApeMaterno) regConApeMaterno.value = conyuge.apellidoMaterno || '';
+        if (regConFechaNac) regConFechaNac.value = conyuge.fechaNacimiento || '';
+
+        setEstadoCivilCasadoDesdeConyuge();
+    }
+
+    function aplicarConyugeSolicitudDesdeSimulacion(solicitud) {
+        const conyugeSimulacion = getConyugeSimulacionData();
+        if (conyugeSimulacion.tieneConyuge) {
+            const conyugeSolicitud = {
+                tipoDoc: conyugeSimulacion.tipoDoc,
+                nroDoc: conyugeSimulacion.nroDoc,
+                apellidoPaterno: solicitud?.conyuge?.apellidoPaterno || '',
+                apellidoMaterno: solicitud?.conyuge?.apellidoMaterno || '',
+                fechaNacimiento: solicitud?.conyuge?.fechaNacimiento || ''
+            };
+            if (solicitud) solicitud.conyuge = conyugeSolicitud;
+            aplicarConyugeSolicitud(conyugeSolicitud);
+        } else {
+            if (solicitud) solicitud.conyuge = null;
+            limpiarConyugeSolicitud();
+        }
+    }
+
     document.querySelectorAll('.flujo-tab-btn').forEach(btn => {
         btn.addEventListener('click', () => {
             const esCalculo = btn.dataset.target === 'tabCalculo';
@@ -991,6 +1051,7 @@ document.addEventListener('DOMContentLoaded', () => {
         document.getElementById('regSeparacionBienes').value = "";
         document.getElementById('regSeparacionBienes').disabled = true;
         document.getElementById('regSeparacionBienes').classList.add('disabled');
+        aplicarConyugeSolicitudDesdeSimulacion(currentSol);
 
         // Reset Datos Laborales
         document.getElementById('regCatLaboral').value = "";
@@ -3668,6 +3729,20 @@ document.addEventListener('DOMContentLoaded', () => {
                 currentSol.tienda = document.getElementById('regVehTienda')?.value || currentSol.tienda;
                 currentSol.vendedor = document.getElementById('regVehVendedor')?.value || currentSol.vendedor;
                 currentSol.tipoCambio = document.getElementById('regSimTipoCambio')?.value || currentSol.tipoCambio;
+
+                const regConyugeCard = document.getElementById('regConyugeCard');
+                const conyugeVisible = !!(regConyugeCard && regConyugeCard.style.display !== 'none');
+                if (conyugeVisible) {
+                    currentSol.conyuge = {
+                        tipoDoc: document.getElementById('regConTipoDoc')?.value || 'DNI',
+                        nroDoc: document.getElementById('regConNroDoc')?.value || '',
+                        apellidoPaterno: document.getElementById('regConApePaterno')?.value || '',
+                        apellidoMaterno: document.getElementById('regConApeMaterno')?.value || '',
+                        fechaNacimiento: document.getElementById('regConFechaNac')?.value || ''
+                    };
+                } else {
+                    currentSol.conyuge = null;
+                }
             }
         }
     }
@@ -3822,6 +3897,7 @@ document.addEventListener('DOMContentLoaded', () => {
             document.getElementById('regSeparacionBienes').value = "";
             document.getElementById('regSeparacionBienes').disabled = true;
             document.getElementById('regSeparacionBienes').classList.add('disabled');
+            aplicarConyugeSolicitud(solicitud.conyuge);
 
             // Reset Laborales
             document.getElementById('regCatLaboral').value = "";
