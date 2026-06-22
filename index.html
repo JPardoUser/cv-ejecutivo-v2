@@ -21,12 +21,8 @@
         <div class="header-right">
             <div class="header-location">
                 <span class="dot"></span>
-                <span>Hyundai - Puruchuco</span>
+                <span id="headerLocationText">Hyundai - Puruchuco</span>
             </div>
-            <button class="header-btn" id="btnConfiguracion">
-                <span class="material-icons-outlined">settings</span>
-                Configuración
-            </button>
             <span class="header-badge">EJECUTIVO</span>
             <div class="header-user" id="headerUser">
                 <div class="header-user-avatar">JU</div>
@@ -84,14 +80,33 @@
                 </div>
 
                 <div class="card">
-                    <div class="card-header">
+                    <div class="card-header simulacion-card-header">
                         <div class="card-header-left">
                             <h3>Datos de simulación</h3>
                             <p>Los campos marcados con <span class="required-asterisk">*</span> son obligatorios.</p>
                         </div>
-                        <span class="tag" id="tagCreditoVehicular">
-                            Crédito vehicular
-                        </span>
+                        <div class="simulacion-header-controls" id="simulacionHeaderControls">
+                            <div class="simulacion-header-field">
+                                <label class="form-label" for="simConcesionario">Concesionario</label>
+                                <select class="form-control" id="simConcesionario" name="simConcesionario">
+                                    <option value="Hyundai" selected>Hyundai</option>
+                                    <option value="Toyota">Toyota</option>
+                                    <option value="Kia">Kia</option>
+                                    <option value="Chevrolet">Chevrolet</option>
+                                    <option value="Nissan">Nissan</option>
+                                </select>
+                            </div>
+                            <div class="simulacion-header-field">
+                                <label class="form-label" for="simSucursal">Sucursal</label>
+                                <select class="form-control" id="simSucursal" name="simSucursal">
+                                    <option value="Puruchuco" selected>Puruchuco</option>
+                                    <option value="San Miguel">San Miguel</option>
+                                    <option value="La Molina">La Molina</option>
+                                    <option value="Surco">Surco</option>
+                                    <option value="Independencia">Independencia</option>
+                                </select>
+                            </div>
+                        </div>
                     </div>
 
                     <form id="formSimulacion" autocomplete="off">
@@ -507,9 +522,8 @@
                                 <span>El caso cumple las condiciones del piloto</span>
                             </label>
                             <div class="form-group calculo-telefono-politicas">
-                                <label class="form-label" for="calcTelefonoPoliticas">N° de teléfono <span class="required">*</span></label>
-                                <input type="tel" class="form-control" id="calcTelefonoPoliticas" placeholder="Ingrese teléfono" maxlength="9" required>
-                                <span class="form-hint">El número ingresado se enviará la URL de políticas de privacidad.</span>
+                                <label class="form-label" for="calcTelefonoPoliticas">N° de teléfono</label>
+                                <input type="tel" class="form-control" id="calcTelefonoPoliticas" placeholder="Ingrese teléfono" maxlength="9">
                             </div>
                         </div>
                         <button type="button" class="btn btn-recalcular" id="btnCalcularCuotas">
@@ -544,7 +558,7 @@
                     <div class="calculo-politicas">
                         <div class="policy-card">
                             <span class="policy-label">Carretera aplicable según política de Riesgos</span>
-                            <strong id="calcCarretera">EXPRESS</strong>
+                            <strong id="calcCarretera" class="carretera-badge carretera-express">EXPRESS</strong>
                         </div>
                         <div class="policy-card">
                             <span class="policy-label">Documentos requeridos según la carretera resultante</span>
@@ -573,13 +587,44 @@
                         <span class="header-bar-label">SOLICITUD:</span>
                         <span class="header-bar-value" id="regSolicitudId">SDLS2927</span>
                     </div>
-                    <div class="header-bar-item">
-                        <span class="header-bar-label">CARTERA:</span>
-                        <span class="header-bar-value" id="regCartera">EXPRESS</span>
+                    <div class="header-bar-item registro-stage-item" id="regEtapaWrapper">
+                        <span class="header-bar-label">ETAPA:</span>
+                        <span class="header-bar-value" id="regEtapa">SOLICITUD</span>
+                    </div>
+                    <div class="header-bar-item registro-status-item" id="regEstadoWrapper">
+                        <span class="header-bar-label">ESTADO:</span>
+                        <span class="header-bar-value status-value" id="regEstado">PENDIENTE</span>
                     </div>
                     <div class="header-bar-item">
-                        <span class="header-bar-label">USUARIO:</span>
-                        <span class="header-bar-value" id="regUsuario">ALOCHA</span>
+                        <span class="header-bar-label">CARRETERA:</span>
+                        <span class="header-bar-value carretera-badge carretera-express" id="regCartera">EXPRESS</span>
+                    </div>
+                    <div class="header-bar-item registro-fecha-item">
+                        <span class="header-bar-label">FECHA Y HORA DE SIMULACIÓN:</span>
+                        <span class="header-bar-value" id="regFechaSimulacion">22-05-2026 15:30:00</span>
+                    </div>
+                    <span id="regUsuario" hidden>ALOCHA</span>
+                </div>
+
+                <!-- Barra fija de identificación del cliente -->
+                <div class="registro-identificacion-sticky" id="registroIdentificacionSticky" aria-hidden="true">
+                    <div class="registro-identificacion-sticky-grid">
+                        <div class="form-group">
+                            <label class="form-label" for="stickyRegTipoDoc">Tipo de documento</label>
+                            <input type="text" class="form-control disabled" id="stickyRegTipoDoc" readonly>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label" for="stickyRegNroDoc">Número documento</label>
+                            <input type="text" class="form-control disabled" id="stickyRegNroDoc" readonly>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label" for="stickyRegNombres">Nombres</label>
+                            <input type="text" class="form-control" id="stickyRegNombres">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label" for="stickyRegApePaterno">Apellido paterno</label>
+                            <input type="text" class="form-control" id="stickyRegApePaterno">
+                        </div>
                     </div>
                 </div>
 
@@ -615,8 +660,9 @@
                             <input type="text" class="form-control" id="regFechaNac">
                         </div>
                         <div class="form-group w-25">
-                            <label class="form-label">Número de celular <span class="required">*</span></label>
-                            <input type="text" class="form-control" id="regCelular" placeholder="Ingrese celular" maxlength="9">
+                            <label class="form-label" for="regCelular">Número de celular <span class="required">*</span></label>
+                            <input type="text" class="form-control" id="regCelular" placeholder="Ingrese celular" maxlength="9" required>
+                            <span class="form-hint">El número ingresado se enviará la URL de políticas de privacidad.</span>
                         </div>
                         <div class="form-group w-25">
                             <label class="form-label">Correo electrónico <span class="required">*</span></label>
@@ -1092,7 +1138,7 @@
                             <div class="checklist-subcard">
                                 <div class="checklist-subcard-header">
                                     <h4>Documentos por adjuntar</h4>
-                                    <span class="tag tag-express" id="regChecklistCarteraTag">CARTERA: EXPRESS</span>
+                                    <span class="tag carretera-badge carretera-express" id="regChecklistCarteraTag">CARTERA: EXPRESS</span>
                                 </div>
                                 <p class="checklist-subcard-desc" id="regChecklistDesc">Para carretera EXPRESS solo se requiere adjuntar copia de DNI ambas caras.</p>
                                 
@@ -1141,9 +1187,29 @@
                     </div>
 
                     <!-- Executive comments at bottom of checklist -->
-                    <div class="comments-section">
-                        <label class="form-label" for="regComentarios">Comentarios del Ejecutivo</label>
+                    <div class="comments-section" id="regComentariosSection">
+                        <label class="form-label" for="regComentarios" id="regComentariosLabel">Comentarios del Ejecutivo</label>
                         <textarea class="form-control textarea-comments" id="regComentarios" rows="3" placeholder="Ingrese comentarios sobre los documentos adjuntos o el estado del checklist..."></textarea>
+                        <div class="comment-card-list" id="regComentariosCards" hidden></div>
+                        <div class="comment-reply-panel" id="regRespuestaRiesgosPanel" hidden>
+                            <div class="comment-reply-header">
+                                <div>
+                                    <h4>Respuesta del Ejecutivo</h4>
+                                    <p>Registre el comentario para responder la observación o rechazo de Riesgos.</p>
+                                </div>
+                                <button type="button" class="btn btn-outline btn-responder-observacion" id="btnResponderObservacionRiesgos">
+                                    <span class="material-icons-outlined">reply</span>
+                                    Responder
+                                </button>
+                            </div>
+                            <div class="comment-reply-input" id="regRespuestaRiesgosInputBox" hidden>
+                                <div class="comment-reply-input-header">
+                                    <label class="form-label" for="regRespuestaRiesgosComentario">Comentario de respuesta</label>
+                                    <span id="regRespuestaRiesgosCounter">0/250</span>
+                                </div>
+                                <textarea class="form-control textarea-comments" id="regRespuestaRiesgosComentario" maxlength="250" rows="3" placeholder="Ingrese comentario de respuesta para Riesgos"></textarea>
+                            </div>
+                        </div>
                     </div>
                 </div>
 
@@ -1284,6 +1350,10 @@
                         <div class="documentaria-summary-item">
                             <span class="documentaria-summary-label">ETAPA</span>
                             <strong class="doc-stage-badge" id="docEtapa">DOCUMENTARIA</strong>
+                        </div>
+                        <div class="documentaria-summary-item documentaria-summary-estado" id="docEstadoWrapper" hidden>
+                            <span class="documentaria-summary-label">ESTADO</span>
+                            <strong class="doc-status-badge" id="docEstado">PENDIENTE</strong>
                         </div>
                         <div class="documentaria-summary-item">
                             <span class="documentaria-summary-label">N° Doc</span>
@@ -1485,7 +1555,7 @@
                                     <div class="documentaria-operations-observation" id="docOperacionesObservation" hidden>
                                         <div class="documentaria-operations-observation-header">
                                             <div>
-                                                <h4>Comentario de observaciones</h4>
+                                                <h4>Comentario de observaciones / rechazo</h4>
                                                 <p>Detalle registrado por el analista de operaciones.</p>
                                             </div>
                                             <button type="button" class="btn btn-outline btn-responder-observacion" id="btnResponderObservacionOperaciones">
@@ -1493,13 +1563,18 @@
                                                 Responder
                                             </button>
                                         </div>
+                                        <div class="comment-card-list documentaria-comment-card-list" id="docOpsComentarioCards" hidden></div>
+                                        <div class="documentaria-operations-comment-box documentaria-executive-comment-box" id="docOpsExecutiveCommentBox" hidden>
+                                            <span>Comentario del ejecutivo</span>
+                                            <p id="docOpsComentarioEjecutivo">-</p>
+                                        </div>
                                         <div class="documentaria-operations-observation-grid">
                                             <div>
                                                 <span>Analista de operaciones</span>
                                                 <strong id="docOpsAnalista">-</strong>
                                             </div>
                                             <div>
-                                                <span>Motivo de observación</span>
+                                                <span id="docOpsMotivoLabel">Motivo de observación</span>
                                                 <strong id="docOpsMotivo">-</strong>
                                             </div>
                                             <div>

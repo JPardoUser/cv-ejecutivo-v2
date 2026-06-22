@@ -11,6 +11,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const sidebarToggle = document.getElementById('sidebarToggle');
     const headerUser = document.getElementById('headerUser');
     const userDropdown = document.getElementById('userDropdown');
+    const headerLocationText = document.getElementById('headerLocationText');
     const navItems = document.querySelectorAll('.sidebar-nav-item');
     const modulePages = document.querySelectorAll('.module-page');
 
@@ -19,6 +20,8 @@ document.addEventListener('DOMContentLoaded', () => {
     const tipoDocumento = document.getElementById('tipoDocumento');
     const nroDocumento = document.getElementById('nroDocumento');
     const nroTelefono = document.getElementById('nroTelefono');
+    const simConcesionario = document.getElementById('simConcesionario');
+    const simSucursal = document.getElementById('simSucursal');
     const calcTelefonoPoliticas = document.getElementById('calcTelefonoPoliticas');
     const toggleConyuge = document.getElementById('toggleConyuge');
     const conyugeData = document.getElementById('conyugeData');
@@ -55,6 +58,87 @@ document.addEventListener('DOMContentLoaded', () => {
     let correlativoCounter = 1;
     let isSolicitudReadOnly = false;
     let currentCarretera = 'EXPRESS';
+    let simulacionConfirmCancelHandler = null;
+
+    // ============================
+    // BARRA FIJA — IDENTIFICACIÓN DEL CLIENTE EN SOLICITUD
+    // ============================
+    const registroStickyClientBar = document.getElementById('registroIdentificacionSticky');
+    const registroStickyClientFields = [
+        { originalId: 'regTipoDoc', stickyId: 'stickyRegTipoDoc' },
+        { originalId: 'regNroDoc', stickyId: 'stickyRegNroDoc' },
+        { originalId: 'regNombres', stickyId: 'stickyRegNombres' },
+        { originalId: 'regApePaterno', stickyId: 'stickyRegApePaterno' }
+    ];
+
+    function syncRegistroStickyClientFields() {
+        registroStickyClientFields.forEach(({ originalId, stickyId }) => {
+            const originalField = document.getElementById(originalId);
+            const stickyField = document.getElementById(stickyId);
+            if (originalField && stickyField && stickyField.value !== originalField.value) {
+                stickyField.value = originalField.value;
+            }
+        });
+    }
+
+    function updateRegistroStickyClientBar() {
+        const moduloRegistro = document.getElementById('moduloRegistroSolicitud');
+        if (!registroStickyClientBar || !moduloRegistro) return;
+
+        const isRegistroActive = moduloRegistro.classList.contains('active');
+        const firstClientField = document.getElementById('regTipoDoc')?.closest('.form-group');
+
+        if (!isRegistroActive || !firstClientField) {
+            registroStickyClientBar.classList.remove('is-visible');
+            registroStickyClientBar.setAttribute('aria-hidden', 'true');
+            return;
+        }
+
+        syncRegistroStickyClientFields();
+        const rootStyles = getComputedStyle(document.documentElement);
+        const headerHeight = parseFloat(rootStyles.getPropertyValue('--header-height')) || 56;
+        const stickyTriggerTop = headerHeight + 12;
+        const shouldShowStickyBar = firstClientField.getBoundingClientRect().top <= stickyTriggerTop;
+
+        registroStickyClientBar.classList.toggle('is-visible', shouldShowStickyBar);
+        registroStickyClientBar.setAttribute('aria-hidden', String(!shouldShowStickyBar));
+    }
+
+    function setupRegistroStickyClientBar() {
+        if (!registroStickyClientBar) return;
+
+        registroStickyClientFields.forEach(({ originalId, stickyId }) => {
+            const originalField = document.getElementById(originalId);
+            const stickyField = document.getElementById(stickyId);
+            if (!originalField || !stickyField) return;
+
+            originalField.addEventListener('input', syncRegistroStickyClientFields);
+            originalField.addEventListener('change', syncRegistroStickyClientFields);
+
+            stickyField.addEventListener('input', () => {
+                if (!stickyField.readOnly && !stickyField.disabled) {
+                    originalField.value = stickyField.value;
+                }
+            });
+            stickyField.addEventListener('change', () => {
+                if (!stickyField.readOnly && !stickyField.disabled) {
+                    originalField.value = stickyField.value;
+                }
+            });
+        });
+
+        const moduloRegistro = document.getElementById('moduloRegistroSolicitud');
+        if (moduloRegistro) {
+            const observer = new MutationObserver(updateRegistroStickyClientBar);
+            observer.observe(moduloRegistro, { attributes: true, attributeFilter: ['class'] });
+        }
+
+        window.addEventListener('scroll', updateRegistroStickyClientBar, { passive: true });
+        window.addEventListener('resize', updateRegistroStickyClientBar);
+        updateRegistroStickyClientBar();
+    }
+
+    setupRegistroStickyClientBar();
 
     // ============================
     // MOCK DATA — Bandeja de Entrada
@@ -100,19 +184,6 @@ document.addEventListener('DOMContentLoaded', () => {
             telefono: '912345678'
         },
         {
-            id: 'EFE003',
-            cliente: 'Sánchez Vargas Roberto',
-            documento: 'DNI - 23456789',
-            tipoCredito: 'Crédito vehicular',
-            monto: 'S/ 35,800.00',
-            fecha: '20-05-2026 15:30:00',
-            concesionario: 'Toyota',
-            tienda: 'La Molina',
-            etapa: 'RIESGOS',
-            estado: 'APROBADO',
-            telefono: '998877665'
-        },
-        {
             id: 'POP001',
             cliente: 'Torres Delgado Ana',
             documento: 'DNI - 34567890',
@@ -124,6 +195,11 @@ document.addEventListener('DOMContentLoaded', () => {
             etapa: 'OPERACIONES',
             estado: 'OBSERVADO',
             telefono: '945612378',
+            comentarioEjecutivo: {
+                ejecutivo: 'ALOCHA - Ejecutivo',
+                fechaHora: '19-05-2026 11:20:00',
+                comentario: 'Se adjuntan documentos iniciales del cliente y se deriva la solicitud para revisión.'
+            },
             downloadedPostAprobacionDocs: [
                 'Carta de aprobación',
                 'Contrato de crédito',
@@ -140,6 +216,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 { id: 'POP001-CL2-003', name: 'Garantia_mobiliaria_POP001.pdf' }
             ],
             operacionesObservacion: {
+                tipo: 'OBSERVADO',
                 analista: 'María Fernández - Operaciones',
                 motivo: 'Documento observado',
                 fechaHora: '20-05-2026 10:35:00',
@@ -161,7 +238,19 @@ document.addEventListener('DOMContentLoaded', () => {
             tienda: 'La Molina',
             etapa: 'RIESGOS',
             estado: 'OBSERVADO',
-            telefono: '923456789'
+            telefono: '923456789',
+            comentarioEjecutivo: {
+                ejecutivo: 'ALOCHA - Ejecutivo',
+                fechaHora: '18-05-2026 15:55:00',
+                comentario: 'Cliente declara ingresos adicionales y adjunta sustento para evaluación de capacidad de pago.'
+            },
+            riesgosDecision: {
+                tipo: 'OBSERVADO',
+                analista: 'Luis Rojas - Riesgos',
+                motivo: 'Sustento de ingresos incompleto',
+                fechaHora: '18-05-2026 16:40:00',
+                comentario: 'Se requiere adjuntar boletas actualizadas y validar continuidad laboral antes de continuar con la evaluación.'
+            }
         },
         {
             id: 'POP002',
@@ -174,7 +263,19 @@ document.addEventListener('DOMContentLoaded', () => {
             tienda: 'San Miguel',
             etapa: 'RIESGOS',
             estado: 'RECHAZADO',
-            telefono: '976543210'
+            telefono: '976543210',
+            comentarioEjecutivo: {
+                ejecutivo: 'ALOCHA - Ejecutivo',
+                fechaHora: '18-05-2026 10:12:00',
+                comentario: 'Cliente solicita evaluación con cuota inicial mínima y financiamiento según campaña vigente.'
+            },
+            riesgosDecision: {
+                tipo: 'RECHAZADO',
+                analista: 'Ana Torres - Riesgos',
+                motivo: 'No cumple política de capacidad de pago',
+                fechaHora: '18-05-2026 10:45:00',
+                comentario: 'La cuota resultante excede la capacidad permitida según ingreso estimado y endeudamiento vigente.'
+            }
         },
         {
             id: 'POP004',
@@ -188,19 +289,6 @@ document.addEventListener('DOMContentLoaded', () => {
             etapa: 'ACTIVACIÓN',
             estado: 'ACTIVADO',
             telefono: '934567812'
-        },
-        {
-            id: 'POP005',
-            cliente: 'Díaz Morales Carmen',
-            documento: 'DNI - 78901234',
-            tipoCredito: 'Crédito vehicular',
-            monto: 'S/ 39,750.00',
-            fecha: '16-05-2026 12:00:00',
-            concesionario: 'Chevrolet',
-            tienda: 'San Miguel',
-            etapa: 'FIRMA',
-            estado: 'EXITOSO',
-            telefono: '956781234'
         }
     ];
 
@@ -380,10 +468,106 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    // Simular button — navigate to Resultado
+    function getSimulacionUbicacion() {
+        return {
+            concesionario: simConcesionario ? simConcesionario.value : 'Hyundai',
+            sucursal: simSucursal ? simSucursal.value : 'Puruchuco'
+        };
+    }
+
+    function updateHeaderUbicacion() {
+        if (!headerLocationText) return;
+        const { concesionario, sucursal } = getSimulacionUbicacion();
+        headerLocationText.textContent = `${concesionario} - ${sucursal}`;
+    }
+
+    function clearSimulacionUbicacionHighlight() {
+        [simConcesionario, simSucursal].forEach(control => {
+            if (!control) return;
+            control.classList.remove('input-attention');
+            const group = control.closest('.simulacion-header-field, .form-group');
+            if (group) group.classList.remove('field-attention');
+        });
+    }
+
+    function resaltarSimulacionUbicacion() {
+        [simConcesionario, simSucursal].forEach(control => {
+            if (!control) return;
+            control.classList.remove('input-attention');
+            void control.offsetWidth;
+            control.classList.add('input-attention');
+            const group = control.closest('.simulacion-header-field, .form-group');
+            if (group) group.classList.add('field-attention');
+        });
+        if (simConcesionario) simConcesionario.focus();
+    }
+
+    [simConcesionario, simSucursal].forEach(control => {
+        if (!control) return;
+        control.addEventListener('change', () => {
+            clearSimulacionUbicacionHighlight();
+            updateHeaderUbicacion();
+        });
+    });
+    updateHeaderUbicacion();
+
+    function limpiarConfirmacionSimulacionCancelHandler() {
+        const cancelBtn = document.getElementById('modalBtnCancel');
+        if (cancelBtn && simulacionConfirmCancelHandler) {
+            cancelBtn.removeEventListener('click', simulacionConfirmCancelHandler, true);
+        }
+        simulacionConfirmCancelHandler = null;
+    }
+
+    function mostrarConfirmacionSimulacion() {
+        const { concesionario, sucursal } = getSimulacionUbicacion();
+        clearSimulacionUbicacionHighlight();
+
+        modalTitle.textContent = 'Confirmación';
+        modalBody.innerHTML = `
+            <div class="popup-confirmacion-simulacion">
+                <div class="popup-confirmacion-icon">
+                    <span class="material-icons-outlined">help_outline</span>
+                </div>
+                <p class="popup-confirmacion-text">
+                    ¿Está seguro de realizar la simulación en el concesionario <strong>${concesionario}</strong> y la sucursal <strong>${sucursal}</strong>?
+                </p>
+            </div>
+        `;
+
+        const cancelBtn = document.getElementById('modalBtnCancel');
+        const oldActionBtn = document.getElementById('modalBtnAction');
+        const newActionBtn = oldActionBtn.cloneNode(true);
+        oldActionBtn.parentNode.replaceChild(newActionBtn, oldActionBtn);
+
+        cancelBtn.style.display = 'inline-flex';
+        cancelBtn.textContent = 'Cancelar';
+        newActionBtn.style.display = 'inline-flex';
+        newActionBtn.textContent = 'Aceptar';
+
+        limpiarConfirmacionSimulacionCancelHandler();
+        simulacionConfirmCancelHandler = (event) => {
+            event.preventDefault();
+            event.stopImmediatePropagation();
+            closeModal();
+            resaltarSimulacionUbicacion();
+        };
+        cancelBtn.addEventListener('click', simulacionConfirmCancelHandler, true);
+
+        newActionBtn.addEventListener('click', () => {
+            limpiarConfirmacionSimulacionCancelHandler();
+            closeModal();
+            showResultadoEvaluacion();
+        });
+
+        modalOverlay.classList.add('active');
+        document.body.style.overflow = 'hidden';
+    }
+
+    // Simular button — show confirmation before navigating to Resultado
     btnSimular.addEventListener('click', () => {
         if (btnSimular.disabled) return;
-        showResultadoEvaluacion();
+        mostrarConfirmacionSimulacion();
     });
 
     // ============================
@@ -448,11 +632,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function validarTelefonoPoliticasCalculo() {
         if (!calcTelefonoPoliticas) return true;
-        const telefono = getTelefonoPoliticasCalculo();
-        if (!telefono) {
-            resaltarTelefonoPoliticasCalculo();
-            return false;
-        }
         calcTelefonoPoliticas.setCustomValidity('');
         clearTelefonoPoliticasHighlight();
         return true;
@@ -466,21 +645,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function resaltarTelefonoPoliticasCalculo() {
-        if (!calcTelefonoPoliticas) return;
-        if (getTelefonoPoliticasCalculo()) {
-            calcTelefonoPoliticas.setCustomValidity('');
-            clearTelefonoPoliticasHighlight();
-            return;
-        }
-        const group = calcTelefonoPoliticas.closest('.form-group');
-        calcTelefonoPoliticas.classList.remove('input-attention');
-        if (group) group.classList.remove('field-attention');
-        void calcTelefonoPoliticas.offsetWidth;
-        calcTelefonoPoliticas.classList.add('input-attention');
-        if (group) group.classList.add('field-attention');
-        calcTelefonoPoliticas.scrollIntoView({ behavior: 'smooth', block: 'center' });
-        calcTelefonoPoliticas.focus({ preventScroll: true });
-        calcTelefonoPoliticas.setCustomValidity('Ingrese el N° de teléfono para enviar la URL de políticas de privacidad.');
+        clearTelefonoPoliticasHighlight();
     }
 
     function tieneFilaCalculoSeleccionada() {
@@ -490,14 +655,14 @@ document.addEventListener('DOMContentLoaded', () => {
     function updateContinuarDesdeCalculoState() {
         const btnContinuarCalculo = document.getElementById('btnContinuarDesdeCalculo');
         if (!btnContinuarCalculo) return;
-        const debeHabilitar = tieneFilaCalculoSeleccionada() && getTelefonoPoliticasCalculo();
+        const debeHabilitar = tieneFilaCalculoSeleccionada();
         btnContinuarCalculo.disabled = false;
         btnContinuarCalculo.classList.toggle('is-disabled', !debeHabilitar);
         btnContinuarCalculo.setAttribute('aria-disabled', String(!debeHabilitar));
     }
 
     function puedeContinuarDesdeCalculo() {
-        return tieneFilaCalculoSeleccionada() && getTelefonoPoliticasCalculo();
+        return tieneFilaCalculoSeleccionada();
     }
 
     function getConyugeSimulacionData() {
@@ -559,15 +724,8 @@ document.addEventListener('DOMContentLoaded', () => {
         const ss = String(now.getSeconds()).padStart(2, '0');
         const fechaStr = `${dd}-${mm}-${yyyy} ${hh}:${min}:${ss}`;
 
-        // Parse Concesionario and Tienda from Header Location
-        let headerConcesionario = 'Hyundai';
-        let headerTienda = 'Puruchuco';
-        const headerLocEl = document.querySelector('.header-location span:not(.dot)');
-        if (headerLocEl) {
-            const locParts = headerLocEl.textContent.split('-');
-            if (locParts[0]) headerConcesionario = locParts[0].trim();
-            if (locParts[1]) headerTienda = locParts[1].trim();
-        }
+        // Concesionario y sucursal seleccionados en Datos de simulación
+        const { concesionario: headerConcesionario, sucursal: headerTienda } = getSimulacionUbicacion();
 
         // Generate mock financial data based on document
         const mockData = generateMockEvaluacion(nroDoc);
@@ -725,19 +883,25 @@ document.addEventListener('DOMContentLoaded', () => {
         const idSolicitud = document.getElementById('resSolicitudId').textContent;
         const { tipoDoc, nroDoc } = getResultadoDocumento();
 
-        // Update stage to SOLICITUD and status to CONSTRUCCIÓN in solicitudes
+        // Update stage to SOLICITUD and status to PENDIENTE in solicitudes
         const currentSol = solicitudes.find(s => s.id === idSolicitud);
         const carreteraActual = getCarreteraActual();
         if (currentSol) {
             currentSol.etapa = 'SOLICITUD';
-            currentSol.estado = 'CONSTRUCCIÓN';
+            currentSol.estado = 'PENDIENTE';
             currentSol.cartera = carreteraActual;
         }
 
         // Set top header info bar
         document.getElementById('regSolicitudId').textContent = idSolicitud;
-        document.getElementById('regCartera').textContent = carreteraActual;
+        const regCarteraEl = document.getElementById('regCartera');
+        if (regCarteraEl) {
+            regCarteraEl.textContent = carreteraActual;
+            aplicarEstiloCarretera(regCarteraEl, carreteraActual);
+        }
+        document.getElementById('regFechaSimulacion').textContent = currentSol?.fecha || document.getElementById('resFechaHora')?.textContent || '-';
         document.getElementById('regUsuario').textContent = "ALOCHA";
+        actualizarEstadoRegistroResumen(currentSol || { etapa: 'SOLICITUD', estado: 'PENDIENTE', fecha: document.getElementById('regFechaSimulacion')?.textContent || '-' });
 
         // Set pre-populated fields for Datos Cliente
         document.getElementById('regTipoDoc').value = tipoDoc;
@@ -774,8 +938,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
         // Pre-populate Vehiculo
         document.getElementById('regVehEstado').value = "Nuevo";
-        document.getElementById('regVehConcesionario').value = "HYUNDAI";
-        document.getElementById('regVehTienda').value = "PURUCHUCO";
+        document.getElementById('regVehConcesionario').value = (currentSol?.concesionario || "HYUNDAI").toUpperCase();
+        document.getElementById('regVehTienda').value = (currentSol?.tienda || "PURUCHUCO").toUpperCase();
         document.getElementById('regVehVendedor').value = "ALOCHA";
         document.getElementById('regVehMarca').value = "Toyota";
         document.getElementById('regVehModelo').value = "Corolla";
@@ -821,56 +985,29 @@ document.addEventListener('DOMContentLoaded', () => {
         actualizarChecklistPorCarretera(carreteraActual);
         resetChecklistManualChecks();
         document.getElementById('regComentarios').value = "";
+        toggleRegistroComentariosCards(false);
 
         // Navigate to Registro screen
         document.querySelectorAll('.module-page').forEach(p => p.classList.remove('active'));
         document.getElementById('moduloRegistroSolicitud').classList.add('active');
+        syncRegistroStickyClientFields();
+        setTimeout(updateRegistroStickyClientBar, 0);
         window.scrollTo({ top: 0, behavior: 'smooth' });
 
     }
 
-    function mostrarPopupPoliticasDatosPersonales() {
+    function continuarDesdeCalculoASolicitud() {
         if (!puedeContinuarDesdeCalculo()) {
-            if (!getTelefonoPoliticasCalculo()) {
-                resaltarTelefonoPoliticasCalculo();
-            } else {
-                clearTelefonoPoliticasHighlight();
-            }
+            clearTelefonoPoliticasHighlight();
             updateContinuarDesdeCalculoState();
+            showToast('Selecciona una fila de la grilla para continuar con la solicitud.', 'warning');
             return;
         }
-        if (!validarTelefonoPoliticasCalculo()) return;
-        const telefono = getTelefonoPoliticasCalculo();
-        modalTitle.textContent = 'Políticas de datos personales';
-        modalBody.innerHTML = `
-            <div class="popup-politicas-confirmacion">
-                <div class="popup-politicas-icon">
-                    <span class="material-icons-outlined">check_circle</span>
-                </div>
-                <p class="popup-politicas-text">
-                    Enlace de politicas de datos personales enviado al número <strong>${telefono}</strong>
-                </p>
-            </div>
-        `;
-
-        document.getElementById('modalBtnCancel').style.display = 'none';
-        document.getElementById('modalBtnAction').style.display = 'inline-flex';
-        document.getElementById('modalBtnAction').textContent = 'Aceptar';
-
-        const oldActionBtn = document.getElementById('modalBtnAction');
-        const newActionBtn = oldActionBtn.cloneNode(true);
-        oldActionBtn.parentNode.replaceChild(newActionBtn, oldActionBtn);
-        newActionBtn.addEventListener('click', () => {
-            closeModal();
-            document.getElementById('modalBtnCancel').style.display = 'inline-flex';
-            continuarARegistroSolicitud();
-        });
-
-        modalOverlay.classList.add('active');
-        document.body.style.overflow = 'hidden';
+        validarTelefonoPoliticasCalculo();
+        continuarARegistroSolicitud();
     }
 
-    document.getElementById('btnContinuarDesdeCalculo').addEventListener('click', mostrarPopupPoliticasDatosPersonales);
+    document.getElementById('btnContinuarDesdeCalculo').addEventListener('click', continuarDesdeCalculoASolicitud);
     updateContinuarDesdeCalculoState();
 
     document.getElementById('btnRegresarCalculo').addEventListener('click', () => {
@@ -888,8 +1025,23 @@ document.addEventListener('DOMContentLoaded', () => {
         return `${currency} ${Number(value || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
     }
 
+    function normalizarCarretera(carretera) {
+        const tipo = String(carretera || 'EXPRESS')
+            .replace('CARTERA:', '')
+            .trim()
+            .toUpperCase();
+        return ['EXPRESS', 'ESCRITORIO', 'SEMIFULL', 'FULL'].includes(tipo) ? tipo : 'EXPRESS';
+    }
+
+    function aplicarEstiloCarretera(element, carretera) {
+        if (!element) return;
+        const tipo = normalizarCarretera(carretera || element.textContent);
+        element.classList.remove('carretera-express', 'carretera-escritorio', 'carretera-semifull', 'carretera-full', 'tag-express', 'tag-full');
+        element.classList.add('carretera-badge', `carretera-${tipo.toLowerCase()}`);
+    }
+
     function getReglasCarretera(carretera) {
-        const tipo = String(carretera || 'EXPRESS').toUpperCase();
+        const tipo = normalizarCarretera(carretera);
         if (tipo === 'FULL') {
             return {
                 carretera: 'FULL',
@@ -899,7 +1051,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         return {
-            carretera: 'EXPRESS',
+            carretera: tipo,
             documentos: ['Copia de DNI ambas caras.'],
             verificacion: 'No aplicable'
         };
@@ -918,7 +1070,10 @@ document.addEventListener('DOMContentLoaded', () => {
         const calcDocumentos = document.getElementById('calcDocumentos');
         const calcVerificacion = document.getElementById('calcVerificacion');
 
-        if (calcCarretera) calcCarretera.textContent = reglas.carretera;
+        if (calcCarretera) {
+            calcCarretera.textContent = reglas.carretera;
+            aplicarEstiloCarretera(calcCarretera, reglas.carretera);
+        }
         if (calcDocumentos) calcDocumentos.innerHTML = renderPolicyItems(reglas.documentos);
         if (calcVerificacion) calcVerificacion.textContent = reglas.verificacion;
 
@@ -927,8 +1082,12 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function getCarreteraActual() {
         const calcCarretera = document.getElementById('calcCarretera');
-        return String(calcCarretera?.textContent || currentCarretera || 'EXPRESS').trim().toUpperCase();
+        return normalizarCarretera(calcCarretera?.textContent || currentCarretera || 'EXPRESS');
     }
+
+    aplicarEstiloCarretera(document.getElementById('calcCarretera'), currentCarretera);
+    aplicarEstiloCarretera(document.getElementById('regCartera'), currentCarretera);
+    aplicarEstiloCarretera(document.getElementById('regChecklistCarteraTag'), currentCarretera);
 
     function actualizarChecklistPorCarretera(carretera) {
         const reglas = getReglasCarretera(carretera);
@@ -941,13 +1100,13 @@ document.addEventListener('DOMContentLoaded', () => {
 
         if (tag) {
             tag.textContent = `CARTERA: ${reglas.carretera}`;
-            tag.classList.toggle('tag-full', reglas.carretera === 'FULL');
+            aplicarEstiloCarretera(tag, reglas.carretera);
         }
 
         if (desc) {
             desc.textContent = reglas.carretera === 'FULL'
                 ? 'Para carretera FULL se requiere adjuntar copia de DNI ambas caras, recibo de servicios y cotización del vehículo.'
-                : 'Para carretera EXPRESS solo se requiere adjuntar copia de DNI ambas caras.';
+                : `Para carretera ${reglas.carretera} solo se requiere adjuntar copia de DNI ambas caras.`;
         }
 
         const esFull = reglas.carretera === 'FULL';
@@ -1118,6 +1277,14 @@ document.addEventListener('DOMContentLoaded', () => {
     // REGISTRO DE SOLICITUD - Handlers & Logic
     // ========================================
 
+    const regCelularInput = document.getElementById('regCelular');
+    if (regCelularInput) {
+        regCelularInput.addEventListener('input', (e) => {
+            e.target.value = e.target.value.replace(/\D/g, '');
+            clearCelularSolicitudHighlight();
+        });
+    }
+
     function isRiesgosPendienteSolicitud(solicitud) {
         return !!(solicitud
             && String(solicitud.etapa || '').trim().toUpperCase() === 'RIESGOS'
@@ -1141,7 +1308,7 @@ document.addEventListener('DOMContentLoaded', () => {
         saveCurrentRegistrationState();
         const solicitudActual = solicitudes.find(s => s.id === currentSolicitudId);
 
-        if (isRiesgosPendienteSolicitud(solicitudActual)) {
+        if (isRiesgosPendienteSolicitud(solicitudActual) || isCasoObservadoORechazadoSolicitud(solicitudActual)) {
             volverABandejaEntradaDesdeSolicitud();
             return;
         }
@@ -1236,10 +1403,19 @@ document.addEventListener('DOMContentLoaded', () => {
     const btnResponderObservacionOperaciones = document.getElementById('btnResponderObservacionOperaciones');
     const docOpsAnalista = document.getElementById('docOpsAnalista');
     const docOpsMotivo = document.getElementById('docOpsMotivo');
+    const docOpsMotivoLabel = document.getElementById('docOpsMotivoLabel');
     const docOpsFechaHora = document.getElementById('docOpsFechaHora');
     const docOpsComentarioAnalista = document.getElementById('docOpsComentarioAnalista');
+    const docOpsComentarioCards = document.getElementById('docOpsComentarioCards');
+    const docOpsExecutiveCommentBox = document.getElementById('docOpsExecutiveCommentBox');
+    const docOpsComentarioEjecutivo = document.getElementById('docOpsComentarioEjecutivo');
     const documentariaPageTitle = document.getElementById('documentariaPageTitle');
     const btnEnviarOperacionesChecklist2 = document.getElementById('btnEnviarOperacionesChecklist2');
+    const btnResponderObservacionRiesgos = document.getElementById('btnResponderObservacionRiesgos');
+    const regRespuestaRiesgosPanel = document.getElementById('regRespuestaRiesgosPanel');
+    const regRespuestaRiesgosInputBox = document.getElementById('regRespuestaRiesgosInputBox');
+    const regRespuestaRiesgosComentario = document.getElementById('regRespuestaRiesgosComentario');
+    const regRespuestaRiesgosCounter = document.getElementById('regRespuestaRiesgosCounter');
     const docPostAprobacionCard = document.getElementById('docPostAprobacionCard');
     const docPostAprobacionList = document.getElementById('docPostAprobacionList');
     const btnVerMasPostDocs = document.getElementById('btnVerMasPostDocs');
@@ -1274,12 +1450,444 @@ document.addEventListener('DOMContentLoaded', () => {
         return !!(solicitud && solicitud.operacionesObservacion);
     }
 
+    function isSolicitudRechazada(solicitud) {
+        const estado = normalizarEtapa(solicitud?.estado);
+        const tipoOperacion = normalizarEtapa(solicitud?.operacionesObservacion?.tipo);
+        const tipoRiesgos = normalizarEtapa((solicitud?.riesgosDecision || solicitud?.riesgosObservacion)?.tipo);
+        return estado === 'RECHAZADO' || tipoOperacion === 'RECHAZADO' || tipoRiesgos === 'RECHAZADO';
+    }
+
+    function isRiesgosObservadoSolicitud(solicitud) {
+        const etapa = normalizarEtapa(solicitud?.etapa);
+        const estado = normalizarEtapa(solicitud?.estado);
+        return etapa === 'RIESGOS' && estado === 'OBSERVADO';
+    }
+
+    function isOperacionesRespuestaPermitida(solicitud) {
+        if (!isOperacionesObservadoSolicitud(solicitud) || isSolicitudRechazada(solicitud)) return false;
+        const tipoDecision = normalizarEtapa(solicitud?.operacionesObservacion?.tipo || solicitud?.estado);
+        return tipoDecision === 'OBSERVADO';
+    }
+
+    function isRiesgosObservadoORechazadoSolicitud(solicitud) {
+        const etapa = normalizarEtapa(solicitud?.etapa);
+        const estado = normalizarEtapa(solicitud?.estado);
+        return etapa === 'RIESGOS' && ['OBSERVADO', 'RECHAZADO'].includes(estado);
+    }
+
+    function isCasoObservadoORechazadoSolicitud(solicitud) {
+        return isRiesgosObservadoORechazadoSolicitud(solicitud) || isOperacionesObservadoSolicitud(solicitud);
+    }
+
+    function getEjecutivoNombreDesdeContexto() {
+        const usuarioRegistro = String(document.getElementById('regUsuario')?.textContent || '').trim();
+        const usuarioHeader = String(document.querySelector('.header-user-name')?.textContent || '').replace(/^Hola\s+/i, '').replace(/[!¡]/g, '').trim();
+        const usuario = usuarioRegistro || usuarioHeader || 'ALOCHA';
+        return `${usuario} - Ejecutivo`;
+    }
+
     function isOperacionesRespuestaHabilitada() {
         return !!(currentDocumentariaSolicitud && currentDocumentariaSolicitud.operacionesRespuestaHabilitada);
     }
 
     function isOperacionesRespuestaEnviada() {
         return !!(currentDocumentariaSolicitud && currentDocumentariaSolicitud.operacionesRespuestaEnviada);
+    }
+
+    function formatFechaHoraActual() {
+        const now = new Date();
+        const dd = String(now.getDate()).padStart(2, '0');
+        const mm = String(now.getMonth() + 1).padStart(2, '0');
+        const yyyy = now.getFullYear();
+        const hh = String(now.getHours()).padStart(2, '0');
+        const min = String(now.getMinutes()).padStart(2, '0');
+        const ss = String(now.getSeconds()).padStart(2, '0');
+        return `${dd}-${mm}-${yyyy} ${hh}:${min}:${ss}`;
+    }
+
+    function getEjecutivoRegistroNombre() {
+        return getEjecutivoNombreDesdeContexto();
+    }
+
+    function getComentarioEditableSolicitud(solicitud) {
+        if (!solicitud) return '';
+        if (typeof solicitud.comentariosBorrador === 'string') return solicitud.comentariosBorrador;
+        if (solicitud.comentarioEjecutivo && typeof solicitud.comentarioEjecutivo.comentario === 'string') {
+            return solicitud.comentarioEjecutivo.comentario;
+        }
+        return solicitud.comentarios || '';
+    }
+
+    function registrarComentarioEjecutivoSolicitud(solicitud, comentario, fechaHora) {
+        if (!solicitud) return;
+        const comentarioLimpio = String(comentario || '').trim();
+        solicitud.comentariosBorrador = comentarioLimpio;
+        solicitud.comentarios = comentarioLimpio;
+        if (!comentarioLimpio) return;
+        solicitud.comentarioEjecutivo = {
+            ejecutivo: getEjecutivoRegistroNombre(),
+            fechaHora: fechaHora || formatFechaHoraActual(),
+            comentario: comentarioLimpio
+        };
+    }
+
+    function registrarRespuestaEjecutivoSolicitud(solicitud, origen, comentario, fechaHora) {
+        if (!solicitud) return false;
+        const comentarioLimpio = String(comentario || '').trim();
+        if (!comentarioLimpio) return false;
+        if (!Array.isArray(solicitud.respuestasEjecutivo)) solicitud.respuestasEjecutivo = [];
+        solicitud.respuestasEjecutivo.push({
+            origen: origen === 'operaciones' ? 'operaciones' : 'riesgos',
+            ejecutivo: getEjecutivoNombreDesdeContexto(),
+            fechaHora: fechaHora || formatFechaHoraActual(),
+            comentario: comentarioLimpio
+        });
+        return true;
+    }
+
+    function getMotivoDecisionLabel(tipo, origen) {
+        const tipoNormalizado = normalizarEtapa(tipo);
+        const origenNormalizado = origen === 'operaciones' ? 'operaciones' : 'riesgos';
+        if (tipoNormalizado === 'RECHAZADO') {
+            return origenNormalizado === 'operaciones' ? 'Motivo de rechazo' : 'Motivo de Rechazo';
+        }
+        return 'Motivo de observación';
+    }
+
+    function formatearComentarioEjecutivo(solicitud) {
+        const comentario = solicitud && solicitud.comentarioEjecutivo;
+        if (comentario && comentario.comentario) {
+            return [
+                'Comentarios del Ejecutivo',
+                `Ejecutivo: ${comentario.ejecutivo || 'ALOCHA - Ejecutivo'}`,
+                `Fecha y hora: ${comentario.fechaHora || '-'}`,
+                `Comentario: ${comentario.comentario || '-'}`
+            ].join('\n');
+        }
+        const comentarioPlano = getComentarioEditableSolicitud(solicitud).trim();
+        if (!comentarioPlano) return '';
+        return [
+            'Comentarios del Ejecutivo',
+            'Ejecutivo: ALOCHA - Ejecutivo',
+            `Fecha y hora: ${solicitud?.fecha || '-'}`,
+            `Comentario: ${comentarioPlano}`
+        ].join('\n');
+    }
+
+    function formatearDecisionAnalista(decision, origen, estadoSolicitud) {
+        if (!decision) return '';
+        const tipoDecision = decision.tipo || estadoSolicitud || '';
+        const esOperaciones = origen === 'operaciones';
+        const titulo = normalizarEtapa(tipoDecision) === 'RECHAZADO'
+            ? (esOperaciones ? 'Comentario de rechazo de Operaciones' : 'Comentario de rechazo de Riesgos')
+            : (esOperaciones ? 'Comentario de observación de Operaciones' : 'Comentario de observación de Riesgos');
+        const analistaLabel = esOperaciones ? 'Analista de operaciones' : 'Analista de riesgos';
+        const comentarioLabel = esOperaciones ? 'Comentario del analista de operaciones' : 'Comentario del analista de riesgos';
+        return [
+            titulo,
+            `${analistaLabel}: ${decision.analista || '-'}`,
+            `${getMotivoDecisionLabel(tipoDecision, origen)}: ${decision.motivo || '-'}`,
+            `Fecha y hora: ${decision.fechaHora || '-'}`,
+            `${comentarioLabel}: ${decision.comentario || '-'}`
+        ].join('\n');
+    }
+
+    function formatearComentariosSolicitud(solicitud, options = {}) {
+        if (!solicitud) return '';
+        const includeRiesgos = options.includeRiesgos !== false;
+        const includeOperaciones = options.includeOperaciones === true;
+        const bloques = [];
+        const comentarioEjecutivo = formatearComentarioEjecutivo(solicitud);
+        if (comentarioEjecutivo) bloques.push(comentarioEjecutivo);
+
+        const estado = normalizarEtapa(solicitud.estado);
+        const etapa = normalizarEtapa(solicitud.etapa);
+        const riesgosDecision = solicitud.riesgosDecision || solicitud.riesgosObservacion;
+        if (includeRiesgos && etapa === 'RIESGOS' && ['OBSERVADO', 'RECHAZADO'].includes(estado) && riesgosDecision) {
+            bloques.push(formatearDecisionAnalista(riesgosDecision, 'riesgos', solicitud.estado));
+        }
+
+        if (includeOperaciones && isOperacionesObservadoSolicitud(solicitud)) {
+            bloques.push(formatearDecisionAnalista(solicitud.operacionesObservacion, 'operaciones', solicitud.estado));
+        }
+
+        return bloques.join('\n\n');
+    }
+
+    function formatearComentarioEjecutivoParaCaja(solicitud) {
+        const comentario = solicitud && solicitud.comentarioEjecutivo;
+        if (comentario && comentario.comentario) {
+            return `Ejecutivo: ${comentario.ejecutivo || 'ALOCHA - Ejecutivo'}\nFecha y hora: ${comentario.fechaHora || '-'}\nComentario: ${comentario.comentario || '-'}`;
+        }
+        const comentarioPlano = getComentarioEditableSolicitud(solicitud).trim();
+        if (!comentarioPlano) return '';
+        return `Ejecutivo: ALOCHA - Ejecutivo\nFecha y hora: ${solicitud?.fecha || '-'}\nComentario: ${comentarioPlano}`;
+    }
+
+
+    function getComentarioEjecutivoCardData(solicitud) {
+        const comentario = solicitud && solicitud.comentarioEjecutivo;
+        if (comentario && comentario.comentario) {
+            return {
+                tipo: 'ejecutivo',
+                titulo: 'Comentario del Ejecutivo',
+                rol: 'Ejecutivo',
+                detalles: [
+                    { label: 'Ejecutivo', value: comentario.ejecutivo || 'ALOCHA - Ejecutivo' },
+                    { label: 'Fecha y hora', value: comentario.fechaHora || '-' }
+                ],
+                comentarioLabel: 'Comentario',
+                comentario: comentario.comentario || '-'
+            };
+        }
+
+        const comentarioPlano = getComentarioEditableSolicitud(solicitud).trim();
+        if (!comentarioPlano) return null;
+        return {
+            tipo: 'ejecutivo',
+            titulo: 'Comentario del Ejecutivo',
+            rol: 'Ejecutivo',
+            detalles: [
+                { label: 'Ejecutivo', value: 'ALOCHA - Ejecutivo' },
+                { label: 'Fecha y hora', value: solicitud?.fecha || '-' }
+            ],
+            comentarioLabel: 'Comentario',
+            comentario: comentarioPlano
+        };
+    }
+
+    function getDecisionAnalistaCardData(decision, origen, estadoSolicitud) {
+        if (!decision) return null;
+        const tipoDecision = decision.tipo || estadoSolicitud || '';
+        const esOperaciones = origen === 'operaciones';
+        const esRechazo = normalizarEtapa(tipoDecision) === 'RECHAZADO';
+        const titulo = esRechazo
+            ? (esOperaciones ? 'Comentario de rechazo de Operaciones' : 'Comentario de rechazo de Riesgos')
+            : (esOperaciones ? 'Comentario de observación de Operaciones' : 'Comentario de observación de Riesgos');
+        const analistaLabel = esOperaciones ? 'Analista de operaciones' : 'Analista de riesgos';
+        const comentarioLabel = esOperaciones ? 'Comentario del analista de operaciones' : 'Comentario del analista de riesgos';
+
+        return {
+            tipo: esOperaciones ? 'operaciones' : 'riesgos',
+            titulo,
+            rol: esOperaciones ? 'Operaciones' : 'Riesgos',
+            detalles: [
+                { label: analistaLabel, value: decision.analista || '-' },
+                { label: getMotivoDecisionLabel(tipoDecision, origen), value: decision.motivo || '-' },
+                { label: 'Fecha y hora', value: decision.fechaHora || '-' }
+            ],
+            comentarioLabel,
+            comentario: decision.comentario || '-'
+        };
+    }
+
+    function getRespuestasEjecutivoCards(solicitud, origen) {
+        const origenNormalizado = origen === 'operaciones' ? 'operaciones' : 'riesgos';
+        return (Array.isArray(solicitud?.respuestasEjecutivo) ? solicitud.respuestasEjecutivo : [])
+            .filter(resp => (resp.origen || 'riesgos') === origenNormalizado && resp.comentario)
+            .map(resp => ({
+                tipo: 'ejecutivo-respuesta',
+                titulo: origenNormalizado === 'operaciones'
+                    ? 'Respuesta del Ejecutivo a Operaciones'
+                    : 'Respuesta del Ejecutivo a Riesgos',
+                rol: 'Ejecutivo',
+                detalles: [
+                    { label: 'Ejecutivo', value: resp.ejecutivo || getEjecutivoNombreDesdeContexto() },
+                    { label: 'Fecha y hora', value: resp.fechaHora || '-' }
+                ],
+                comentarioLabel: 'Comentario de respuesta',
+                comentario: resp.comentario || '-'
+            }));
+    }
+
+    function getComentariosSolicitudCards(solicitud, options = {}) {
+        if (!solicitud) return [];
+        const includeRiesgos = options.includeRiesgos !== false;
+        const includeOperaciones = options.includeOperaciones === true;
+        const cards = [];
+        const comentarioEjecutivo = getComentarioEjecutivoCardData(solicitud);
+        if (comentarioEjecutivo) cards.push(comentarioEjecutivo);
+
+        const estado = normalizarEtapa(solicitud.estado);
+        const etapa = normalizarEtapa(solicitud.etapa);
+        const riesgosDecision = solicitud.riesgosDecision || solicitud.riesgosObservacion;
+        if (includeRiesgos && etapa === 'RIESGOS' && ['OBSERVADO', 'RECHAZADO'].includes(estado) && riesgosDecision) {
+            const riesgosCard = getDecisionAnalistaCardData(riesgosDecision, 'riesgos', solicitud.estado);
+            if (riesgosCard) cards.push(riesgosCard);
+            cards.push(...getRespuestasEjecutivoCards(solicitud, 'riesgos'));
+        }
+
+        if (includeOperaciones && isOperacionesObservadoSolicitud(solicitud)) {
+            const operacionesCard = getDecisionAnalistaCardData(solicitud.operacionesObservacion, 'operaciones', solicitud.estado);
+            if (operacionesCard) cards.push(operacionesCard);
+            cards.push(...getRespuestasEjecutivoCards(solicitud, 'operaciones'));
+        }
+
+        return cards;
+    }
+
+    function renderComentarioCards(container, cards, emptyMessage = 'No se registraron comentarios.') {
+        if (!container) return;
+        const cardList = Array.isArray(cards) ? cards.filter(Boolean) : [];
+        if (!cardList.length) {
+            container.innerHTML = `
+                <div class="comment-card-empty">
+                    <span>Comentarios</span>
+                    <p>${escapeHtml(emptyMessage)}</p>
+                </div>
+            `;
+            container.hidden = false;
+            return;
+        }
+
+        container.innerHTML = cardList.map(card => {
+            const detalles = (card.detalles || []).map(item => `
+                <div class="comment-card-row">
+                    <span>${escapeHtml(item.label || '')}</span>
+                    <strong>${escapeHtml(item.value || '-')}</strong>
+                </div>
+            `).join('');
+
+            return `
+                <div class="comment-card-item comment-card-${escapeHtml(card.tipo || 'ejecutivo')}">
+                    <div class="comment-card-header">
+                        <strong class="comment-card-title">${escapeHtml(card.titulo || 'Comentario')}</strong>
+                        <span class="comment-card-role">${escapeHtml(card.rol || '-')}</span>
+                    </div>
+                    <div class="comment-card-details">${detalles}</div>
+                    <div class="comment-card-main">
+                        <span>${escapeHtml(card.comentarioLabel || 'Comentario')}</span>
+                        <p>${escapeHtml(card.comentario || '-')}</p>
+                    </div>
+                </div>
+            `;
+        }).join('');
+        container.hidden = false;
+    }
+
+    function toggleRegistroComentariosCards(isReadOnly, solicitud) {
+        const regComentarios = document.getElementById('regComentarios');
+        const regComentariosCards = document.getElementById('regComentariosCards');
+        const regComentariosLabel = document.getElementById('regComentariosLabel');
+
+        if (regComentariosLabel) {
+            regComentariosLabel.textContent = isReadOnly ? 'Comentarios' : 'Comentarios del Ejecutivo';
+        }
+
+        if (regComentarios) {
+            regComentarios.hidden = !!isReadOnly;
+        }
+
+        if (regComentariosCards) {
+            if (isReadOnly) {
+                renderComentarioCards(
+                    regComentariosCards,
+                    getComentariosSolicitudCards(solicitud, { includeRiesgos: true, includeOperaciones: false })
+                );
+            } else {
+                regComentariosCards.innerHTML = '';
+                regComentariosCards.hidden = true;
+            }
+        }
+
+        updateRiesgosRespuestaState(solicitud, isReadOnly);
+    }
+
+    function updateRiesgosRespuestaCounter() {
+        if (!regRespuestaRiesgosComentario || !regRespuestaRiesgosCounter) return;
+        const texto = regRespuestaRiesgosComentario.value.slice(0, 250);
+        if (texto !== regRespuestaRiesgosComentario.value) regRespuestaRiesgosComentario.value = texto;
+        regRespuestaRiesgosCounter.textContent = `${texto.length}/250`;
+    }
+
+    function updateRiesgosRespuestaState(solicitud, isReadOnly = isSolicitudReadOnly) {
+        const esRespuestaPermitida = isRiesgosObservadoSolicitud(solicitud);
+        const respuestaHabilitada = !!(solicitud && solicitud.riesgosRespuestaHabilitada) && esRespuestaPermitida;
+        const respuestaEnviada = !!(solicitud && solicitud.riesgosRespuestaEnviada) && esRespuestaPermitida;
+
+        if (regRespuestaRiesgosPanel) {
+            regRespuestaRiesgosPanel.hidden = !(isReadOnly && esRespuestaPermitida);
+        }
+        if (btnResponderObservacionRiesgos) {
+            btnResponderObservacionRiesgos.hidden = !(isReadOnly && esRespuestaPermitida) || respuestaHabilitada || respuestaEnviada;
+            btnResponderObservacionRiesgos.disabled = !esRespuestaPermitida || respuestaEnviada;
+        }
+        if (regRespuestaRiesgosInputBox) {
+            regRespuestaRiesgosInputBox.hidden = !(isReadOnly && esRespuestaPermitida && respuestaHabilitada && !respuestaEnviada);
+        }
+        if (regRespuestaRiesgosComentario) {
+            regRespuestaRiesgosComentario.disabled = !(isReadOnly && esRespuestaPermitida && respuestaHabilitada && !respuestaEnviada);
+            if (!respuestaHabilitada) regRespuestaRiesgosComentario.value = '';
+            updateRiesgosRespuestaCounter();
+        }
+
+        const btnPasarRiesgos = document.getElementById('btnPasarRiesgos');
+        if (btnPasarRiesgos && isReadOnly && esRespuestaPermitida) {
+            btnPasarRiesgos.style.display = respuestaHabilitada && !respuestaEnviada ? 'inline-flex' : 'none';
+            btnPasarRiesgos.textContent = 'Enviar respuesta a Riesgos';
+        } else if (btnPasarRiesgos && isReadOnly) {
+            btnPasarRiesgos.style.display = 'none';
+            btnPasarRiesgos.textContent = 'Pasar a Riesgos';
+        } else if (btnPasarRiesgos && !isReadOnly) {
+            btnPasarRiesgos.style.display = 'inline-flex';
+            btnPasarRiesgos.textContent = 'Pasar a Riesgos';
+        }
+    }
+
+    function mostrarPopupRespuestaRiesgosExitosa() {
+        modalTitle.textContent = 'Respuesta registrada';
+        modalBody.innerHTML = `
+            <div class="popup-solicitud-success">
+                <div class="popup-solicitud-icon">
+                    <span class="material-icons-outlined">check_circle</span>
+                </div>
+                <p class="popup-solicitud-text">La respuesta del ejecutivo fue registrada correctamente.</p>
+            </div>
+        `;
+
+        document.getElementById('modalBtnCancel').style.display = 'none';
+        document.getElementById('modalBtnAction').style.display = 'inline-flex';
+        document.getElementById('modalBtnAction').textContent = 'Aceptar';
+
+        const oldActionBtn = document.getElementById('modalBtnAction');
+        const newActionBtn = oldActionBtn.cloneNode(true);
+        oldActionBtn.parentNode.replaceChild(newActionBtn, oldActionBtn);
+        newActionBtn.addEventListener('click', () => {
+            closeModal();
+            document.getElementById('modalBtnCancel').style.display = 'inline-flex';
+            volverABandejaEntradaDesdeSolicitud();
+        });
+
+        modalOverlay.classList.add('active');
+        document.body.style.overflow = 'hidden';
+    }
+
+    function enviarRespuestaARiesgos() {
+        const solicitudActual = solicitudes.find(s => s.id === currentSolicitudId);
+        if (!isRiesgosObservadoSolicitud(solicitudActual)) return false;
+        if (!solicitudActual.riesgosRespuestaHabilitada || solicitudActual.riesgosRespuestaEnviada) return false;
+
+        const comentario = String(regRespuestaRiesgosComentario?.value || '').trim();
+        if (!comentario) {
+            showToast('Ingrese un comentario para responder a Riesgos.', 'warning');
+            if (regRespuestaRiesgosComentario) {
+                regRespuestaRiesgosComentario.focus();
+                regRespuestaRiesgosComentario.classList.add('input-attention');
+                setTimeout(() => regRespuestaRiesgosComentario.classList.remove('input-attention'), 1200);
+            }
+            return true;
+        }
+
+        const fechaHora = formatFechaHoraActual();
+        registrarRespuestaEjecutivoSolicitud(solicitudActual, 'riesgos', comentario, fechaHora);
+        solicitudActual.riesgosRespuestaEnviada = true;
+        solicitudActual.riesgosRespuestaHabilitada = false;
+        if (regRespuestaRiesgosComentario) regRespuestaRiesgosComentario.value = '';
+        toggleRegistroComentariosCards(true, solicitudActual);
+        updateRiesgosRespuestaState(solicitudActual, true);
+        applyBandejaFilters();
+        mostrarPopupRespuestaRiesgosExitosa();
+        return true;
     }
 
     function renderChecklistTable() {
@@ -1439,15 +2047,34 @@ document.addEventListener('DOMContentLoaded', () => {
         if (!isOperaciones) return;
 
         const observacion = currentDocumentariaSolicitud.operacionesObservacion || {};
-        if (docOpsAnalista) docOpsAnalista.textContent = observacion.analista || '-';
-        if (docOpsMotivo) docOpsMotivo.textContent = observacion.motivo || '-';
-        if (docOpsFechaHora) docOpsFechaHora.textContent = observacion.fechaHora || '-';
-        if (docOpsComentarioAnalista) docOpsComentarioAnalista.textContent = observacion.comentario || '-';
+        const tipoDecision = observacion.tipo || currentDocumentariaSolicitud.estado || 'OBSERVADO';
+        const comentarioEjecutivo = formatearComentarioEjecutivoParaCaja(currentDocumentariaSolicitud);
+
+        if (docOpsComentarioCards) {
+            renderComentarioCards(
+                docOpsComentarioCards,
+                getComentariosSolicitudCards(currentDocumentariaSolicitud, { includeRiesgos: false, includeOperaciones: true })
+            );
+            if (docOpsExecutiveCommentBox) docOpsExecutiveCommentBox.hidden = true;
+            const legacyGrid = docOperacionesObservation?.querySelector('.documentaria-operations-observation-grid');
+            const legacyAnalystBox = docOpsComentarioAnalista?.closest('.documentaria-operations-comment-box');
+            if (legacyGrid) legacyGrid.hidden = true;
+            if (legacyAnalystBox) legacyAnalystBox.hidden = true;
+        } else {
+            if (docOpsExecutiveCommentBox) docOpsExecutiveCommentBox.hidden = !comentarioEjecutivo;
+            if (docOpsComentarioEjecutivo) docOpsComentarioEjecutivo.textContent = comentarioEjecutivo || '-';
+            if (docOpsAnalista) docOpsAnalista.textContent = observacion.analista || '-';
+            if (docOpsMotivoLabel) docOpsMotivoLabel.textContent = getMotivoDecisionLabel(tipoDecision, 'operaciones');
+            if (docOpsMotivo) docOpsMotivo.textContent = observacion.motivo || '-';
+            if (docOpsFechaHora) docOpsFechaHora.textContent = observacion.fechaHora || '-';
+            if (docOpsComentarioAnalista) docOpsComentarioAnalista.textContent = observacion.comentario || '-';
+        }
 
         if (btnResponderObservacionOperaciones) {
-            const respuestaEnviada = isOperacionesRespuestaEnviada();
-            btnResponderObservacionOperaciones.disabled = respuestaEnviada;
-            btnResponderObservacionOperaciones.hidden = respuestaEnviada;
+            const respuestaPermitida = isOperacionesRespuestaPermitida(currentDocumentariaSolicitud);
+            const respuestaEnviada = isOperacionesRespuestaEnviada() && respuestaPermitida;
+            btnResponderObservacionOperaciones.disabled = !respuestaPermitida || respuestaEnviada;
+            btnResponderObservacionOperaciones.hidden = !respuestaPermitida || respuestaEnviada;
             btnResponderObservacionOperaciones.title = respuestaEnviada
                 ? 'La respuesta ya fue enviada a operaciones.'
                 : 'Habilitar campo para responder la observación.';
@@ -1465,14 +2092,21 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         const isOperaciones = isOperacionesObservadoSolicitud(currentDocumentariaSolicitud);
-        const respuestaHabilitada = isOperacionesRespuestaHabilitada();
-        const respuestaEnviada = isOperacionesRespuestaEnviada();
-        const comentarioReadonly = isChecklist2ReadOnly || (isOperaciones && !respuestaHabilitada);
+        const respuestaPermitida = isOperacionesRespuestaPermitida(currentDocumentariaSolicitud);
+        const respuestaHabilitada = respuestaPermitida && isOperacionesRespuestaHabilitada();
+        const respuestaEnviada = respuestaPermitida && isOperacionesRespuestaEnviada();
+        const ocultarRespuestaOperaciones = isOperaciones && (!respuestaPermitida || (!respuestaHabilitada && !respuestaEnviada));
+        const comentarioReadonly = isChecklist2ReadOnly || (isOperaciones && (!respuestaPermitida || !respuestaHabilitada));
+
+        const comentarioWrapper = document.getElementById('docChecklist2CommentWrapper');
+        if (comentarioWrapper) {
+            comentarioWrapper.hidden = ocultarRespuestaOperaciones;
+        }
 
         docChecklist2Comentario.readOnly = comentarioReadonly;
         docChecklist2Comentario.classList.toggle('is-readonly', comentarioReadonly);
         docChecklist2Comentario.placeholder = comentarioReadonly
-            ? (isOperaciones ? 'Seleccione Responder para registrar el comentario' : 'Comentario enviado a operaciones')
+            ? (isOperaciones ? 'Respuesta enviada a operaciones' : 'Comentario enviado a operaciones')
             : (isOperaciones ? 'Ingrese respuesta para operaciones' : 'Ingrese comentario para operaciones');
 
         if (docChecklist2ComentarioLabel) {
@@ -1499,6 +2133,50 @@ document.addEventListener('DOMContentLoaded', () => {
         return String(solicitud?.etapa || '').toUpperCase() === 'FIRMA';
     }
 
+    function normalizarEtapa(etapa) {
+        return String(etapa || '')
+            .trim()
+            .toUpperCase()
+            .normalize('NFD')
+            .replace(/[\u0300-\u036f]/g, '');
+    }
+
+    function debeMostrarEstadoDesdeRiesgos(etapa) {
+        return ['RIESGOS', 'DOCUMENTARIA', 'FIRMA', 'FIRMAS', 'OPERACIONES', 'ACTIVACION'].includes(normalizarEtapa(etapa));
+    }
+
+    function actualizarEstadoDocumentariaResumen(solicitud) {
+        const docEstadoWrapper = document.getElementById('docEstadoWrapper');
+        const docEstado = document.getElementById('docEstado');
+        if (!docEstadoWrapper || !docEstado || !solicitud) return;
+
+        const mostrarEstado = debeMostrarEstadoDesdeRiesgos(solicitud.etapa);
+        docEstadoWrapper.hidden = !mostrarEstado;
+        docEstadoWrapper.style.display = mostrarEstado ? 'flex' : 'none';
+        if (mostrarEstado) {
+            docEstado.textContent = solicitud.estado || '-';
+        }
+    }
+
+    function actualizarEstadoRegistroResumen(solicitud) {
+        const regEtapaWrapper = document.getElementById('regEtapaWrapper');
+        const regEstadoWrapper = document.getElementById('regEstadoWrapper');
+        const regEtapa = document.getElementById('regEtapa');
+        const regEstado = document.getElementById('regEstado');
+        const regFechaSimulacion = document.getElementById('regFechaSimulacion');
+        if (!regEtapaWrapper || !regEstadoWrapper || !regEtapa || !regEstado || !solicitud) return;
+
+        regEtapaWrapper.hidden = false;
+        regEstadoWrapper.hidden = false;
+        regEtapaWrapper.style.display = 'block';
+        regEstadoWrapper.style.display = 'block';
+        regEtapa.textContent = solicitud.etapa || '-';
+        regEstado.textContent = solicitud.estado || 'PENDIENTE';
+        if (regFechaSimulacion) {
+            regFechaSimulacion.textContent = solicitud.fecha || regFechaSimulacion.textContent || '-';
+        }
+    }
+
     function updateDocumentariaTitleAndStage() {
         if (!currentDocumentariaSolicitud) return;
         const isOperaciones = isOperacionesObservadoSolicitud(currentDocumentariaSolicitud);
@@ -1511,6 +2189,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (docEtapa) {
             docEtapa.textContent = currentDocumentariaSolicitud.etapa || 'DOCUMENTARIA';
         }
+        actualizarEstadoDocumentariaResumen(currentDocumentariaSolicitud);
     }
 
     function avanzarSolicitudEFE004AFirmaPendiente() {
@@ -1603,16 +2282,17 @@ document.addEventListener('DOMContentLoaded', () => {
         const unlocked = isChecklist2Unlocked();
         const tieneDocumentos = docChecklist2Docs.length > 0;
         const isOperaciones = isOperacionesObservadoSolicitud(currentDocumentariaSolicitud);
-        const respuestaHabilitada = isOperacionesRespuestaHabilitada();
-        const respuestaEnviada = isOperacionesRespuestaEnviada();
+        const respuestaPermitida = isOperacionesRespuestaPermitida(currentDocumentariaSolicitud);
+        const respuestaHabilitada = respuestaPermitida && isOperacionesRespuestaHabilitada();
+        const respuestaEnviada = respuestaPermitida && isOperacionesRespuestaEnviada();
 
         let enviarOperacionesDeshabilitado = !unlocked || !tieneDocumentos || isChecklist2ReadOnly;
         if (isOperaciones) {
-            enviarOperacionesDeshabilitado = !unlocked || !tieneDocumentos || respuestaEnviada || !respuestaHabilitada;
+            enviarOperacionesDeshabilitado = !respuestaPermitida || !unlocked || !tieneDocumentos || respuestaEnviada || !respuestaHabilitada;
         }
 
         if (docChecklist2Footer) {
-            docChecklist2Footer.hidden = isOperaciones ? false : enviarOperacionesDeshabilitado;
+            docChecklist2Footer.hidden = isOperaciones ? !respuestaPermitida : enviarOperacionesDeshabilitado;
         }
 
         if (btnEnviarOperacionesChecklist2) {
@@ -1620,9 +2300,11 @@ document.addEventListener('DOMContentLoaded', () => {
             btnEnviarOperacionesChecklist2.setAttribute('aria-disabled', String(enviarOperacionesDeshabilitado));
             btnEnviarOperacionesChecklist2.title = respuestaEnviada
                 ? 'La respuesta ya fue enviada a operaciones.'
-                : (isOperaciones && !respuestaHabilitada
-                    ? 'Seleccione Responder para habilitar el envío.'
-                    : (tieneDocumentos ? 'Enviar documentos a operaciones' : 'Adjunte al menos un documento para enviar a operaciones'));
+                : (isOperaciones && !respuestaPermitida
+                    ? 'La solicitud rechazada no permite respuesta.'
+                    : (isOperaciones && !respuestaHabilitada
+                        ? 'Seleccione Responder para habilitar el envío.'
+                        : (tieneDocumentos ? 'Enviar documentos a operaciones' : 'Adjunte al menos un documento para enviar a operaciones')));
         }
     }
 
@@ -1863,13 +2545,22 @@ document.addEventListener('DOMContentLoaded', () => {
         if (docChecklist2Comentario) {
             docChecklist2ComentarioValue = docChecklist2Comentario.value.slice(0, 250);
         }
+        const esRespuestaOperaciones = isOperacionesRespuestaPermitida(currentDocumentariaSolicitud);
+        if (isOperacionesObservadoSolicitud(currentDocumentariaSolicitud) && !esRespuestaOperaciones) return;
+        if (esRespuestaOperaciones && !docChecklist2ComentarioValue.trim()) {
+            showToast('Ingrese un comentario para responder a Operaciones.', 'warning');
+            if (docChecklist2Comentario) docChecklist2Comentario.focus();
+            return;
+        }
+
         currentDocumentariaSolicitud.documentariaEnviadaOperaciones = true;
         currentDocumentariaSolicitud.checklist2Docs = docChecklist2Docs;
         currentDocumentariaSolicitud.checklist2Comentario = docChecklist2ComentarioValue;
         currentDocumentariaSolicitud.downloadedPostAprobacionDocs = Array.from(downloadedPostAprobacionDocs);
         currentDocumentariaSolicitud.etapa = 'OPERACIONES';
-        currentDocumentariaSolicitud.estado = 'PENDIENTE';
-        if (isOperacionesObservadoSolicitud(currentDocumentariaSolicitud)) {
+        currentDocumentariaSolicitud.estado = esRespuestaOperaciones ? currentDocumentariaSolicitud.estado : 'PENDIENTE';
+        if (esRespuestaOperaciones) {
+            registrarRespuestaEjecutivoSolicitud(currentDocumentariaSolicitud, 'operaciones', docChecklist2ComentarioValue, formatFechaHoraActual());
             currentDocumentariaSolicitud.operacionesRespuestaEnviada = true;
             currentDocumentariaSolicitud.operacionesRespuestaHabilitada = false;
         }
@@ -1913,7 +2604,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     if (btnResponderObservacionOperaciones) {
         btnResponderObservacionOperaciones.addEventListener('click', () => {
-            if (!isOperacionesObservadoSolicitud(currentDocumentariaSolicitud) || isOperacionesRespuestaEnviada()) return;
+            if (!isOperacionesRespuestaPermitida(currentDocumentariaSolicitud) || isOperacionesRespuestaEnviada()) return;
             currentDocumentariaSolicitud.operacionesRespuestaHabilitada = true;
             updateOperacionesObservationState();
             updateChecklist2ComentarioState();
@@ -1922,6 +2613,23 @@ document.addEventListener('DOMContentLoaded', () => {
                 docChecklist2Comentario.focus();
             }
             persistCurrentDocumentariaState();
+        });
+    }
+
+    if (btnResponderObservacionRiesgos) {
+        btnResponderObservacionRiesgos.addEventListener('click', () => {
+            const solicitudActual = solicitudes.find(s => s.id === currentSolicitudId);
+            if (!isRiesgosObservadoSolicitud(solicitudActual) || solicitudActual.riesgosRespuestaEnviada) return;
+            solicitudActual.riesgosRespuestaHabilitada = true;
+            updateRiesgosRespuestaState(solicitudActual, true);
+            if (regRespuestaRiesgosComentario) regRespuestaRiesgosComentario.focus();
+        });
+    }
+
+    if (regRespuestaRiesgosComentario) {
+        regRespuestaRiesgosComentario.addEventListener('input', () => {
+            regRespuestaRiesgosComentario.value = regRespuestaRiesgosComentario.value.replace(/^\s+/, '').slice(0, 250);
+            updateRiesgosRespuestaCounter();
         });
     }
 
@@ -2055,28 +2763,81 @@ document.addEventListener('DOMContentLoaded', () => {
         docNameContext = null;
     });
 
-    // Pasar a Riesgos sin validación OTP
-    document.getElementById('btnPasarRiesgos').addEventListener('click', () => {
+    function clearCelularSolicitudHighlight() {
+        const regCelular = document.getElementById('regCelular');
+        if (!regCelular) return;
+        regCelular.classList.remove('input-attention');
+        const group = regCelular.closest('.form-group');
+        if (group) group.classList.remove('field-attention');
+        regCelular.setCustomValidity('');
+    }
+
+    function resaltarCelularSolicitud() {
+        const regCelular = document.getElementById('regCelular');
+        if (!regCelular) return;
+        const group = regCelular.closest('.form-group');
+        regCelular.classList.remove('input-attention');
+        if (group) group.classList.remove('field-attention');
+        void regCelular.offsetWidth;
+        regCelular.classList.add('input-attention');
+        if (group) group.classList.add('field-attention');
+        regCelular.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        regCelular.focus({ preventScroll: true });
+        regCelular.setCustomValidity('Ingrese el número de celular para enviar la URL de políticas de privacidad.');
+    }
+
+    function validarCelularSolicitud() {
+        const regCelular = document.getElementById('regCelular');
+        if (!regCelular) return true;
+        const celular = regCelular.value.trim();
+        if (!celular) {
+            resaltarCelularSolicitud();
+            showToast('Debe ingresar el número de celular para enviar la URL de políticas de privacidad.', 'warning');
+            return false;
+        }
+        clearCelularSolicitudHighlight();
+        return true;
+    }
+
+    function mostrarPopupPoliticasPrivacidadSolicitud(telefono, onConfirm) {
+        modalTitle.textContent = 'Políticas de privacidad';
+        modalBody.innerHTML = `
+            <div class="popup-politicas-confirmacion">
+                <div class="popup-politicas-icon">
+                    <span class="material-icons-outlined">check_circle</span>
+                </div>
+                <p class="popup-politicas-text">
+                    El número ingresado se enviará la URL de políticas de privacidad.
+                </p>
+                <p class="popup-politicas-text">
+                    Número de celular: <strong>${telefono}</strong>
+                </p>
+            </div>
+        `;
+
+        document.getElementById('modalBtnCancel').style.display = 'none';
+        document.getElementById('modalBtnAction').style.display = 'inline-flex';
+        document.getElementById('modalBtnAction').textContent = 'Aceptar';
+
+        const oldActionBtn = document.getElementById('modalBtnAction');
+        const newActionBtn = oldActionBtn.cloneNode(true);
+        oldActionBtn.parentNode.replaceChild(newActionBtn, oldActionBtn);
+        newActionBtn.addEventListener('click', () => {
+            closeModal();
+            document.getElementById('modalBtnCancel').style.display = 'inline-flex';
+            if (typeof onConfirm === 'function') onConfirm();
+        });
+
+        modalOverlay.classList.add('active');
+        document.body.style.overflow = 'hidden';
+    }
+
+    function ejecutarEnvioARiesgos() {
         const celular = document.getElementById('regCelular').value.trim();
         const tipoDoc = document.getElementById('regTipoDoc').value;
         const nroDoc = document.getElementById('regNroDoc').value;
-        const carreteraRegistro = String(document.getElementById('regCartera')?.textContent || currentCarretera || 'EXPRESS').trim().toUpperCase();
-        const requiredManualChecks = getRequiredManualChecks(carreteraRegistro);
-        const missingManualChecks = requiredManualChecks.filter(item => !document.getElementById(item.id)?.checked);
-        const hasAttachedFile = attachedDocs.length > 0;
-
-        // Validation: Only validate that there is at least one file attached and required checkboxes are checked
-        if (missingManualChecks.length > 0) {
-            const missingLabels = missingManualChecks.map(item => item.label).join(', ');
-            showToast(`Debe marcar las casillas manuales requeridas para carretera ${carreteraRegistro}: ${missingLabels}.`, 'warning');
-            return;
-        }
-        if (!hasAttachedFile) {
-            showToast('Debe adjuntar al menos un documento para poder continuar.', 'warning');
-            return;
-        }
-
-        const celularText = celular || '922159933';
+        const celularText = celular;
+        const comentarioRegistro = document.getElementById('regComentarios')?.value || '';
 
         // Generate current timestamp matching the format dd-mm-yyyy hh:mm:ss
         const now = new Date();
@@ -2105,6 +2866,7 @@ document.addEventListener('DOMContentLoaded', () => {
             existingSol.telefono = celularText;
             existingSol.concesionario = concesionarioStr;
             existingSol.tienda = tiendaStr;
+            registrarComentarioEjecutivoSolicitud(existingSol, comentarioRegistro, fechaStr);
             
             // Set the correct calculated amount from the form
             const precioVehStr = document.getElementById('regSimPrecioVeh').value;
@@ -2125,8 +2887,11 @@ document.addEventListener('DOMContentLoaded', () => {
                 concesionario: concesionarioStr,
                 tienda: tiendaStr
             };
+            registrarComentarioEjecutivoSolicitud(newSol, comentarioRegistro, fechaStr);
             solicitudes.unshift(newSol);
         }
+
+        actualizarEstadoRegistroResumen(solicitudes.find(s => s.id === solId) || { etapa: 'RIESGOS', estado: 'PENDIENTE' });
 
         // Navigate to Bandeja
         document.querySelectorAll('.module-page').forEach(page => page.classList.remove('active'));
@@ -2139,6 +2904,40 @@ document.addEventListener('DOMContentLoaded', () => {
         applyBandejaFilters();
 
         mostrarPopupEnvioRiesgos();
+    }
+
+    // Pasar a Riesgos sin validación OTP
+    document.getElementById('btnPasarRiesgos').addEventListener('click', () => {
+        const solicitudActual = solicitudes.find(s => s.id === currentSolicitudId);
+        if (isRiesgosObservadoSolicitud(solicitudActual)) {
+            enviarRespuestaARiesgos();
+            return;
+        }
+
+        if (isSolicitudRechazada(solicitudActual)) {
+            return;
+        }
+
+        if (!validarCelularSolicitud()) return;
+
+        const celular = document.getElementById('regCelular').value.trim();
+        const carreteraRegistro = normalizarCarretera(document.getElementById('regCartera')?.textContent || currentCarretera || 'EXPRESS');
+        const requiredManualChecks = getRequiredManualChecks(carreteraRegistro);
+        const missingManualChecks = requiredManualChecks.filter(item => !document.getElementById(item.id)?.checked);
+        const hasAttachedFile = attachedDocs.length > 0;
+
+        // Validation: Only validate that there is at least one file attached and required checkboxes are checked
+        if (missingManualChecks.length > 0) {
+            const missingLabels = missingManualChecks.map(item => item.label).join(', ');
+            showToast(`Debe marcar las casillas manuales requeridas para carretera ${carreteraRegistro}: ${missingLabels}.`, 'warning');
+            return;
+        }
+        if (!hasAttachedFile) {
+            showToast('Debe adjuntar al menos un documento para poder continuar.', 'warning');
+            return;
+        }
+
+        mostrarPopupPoliticasPrivacidadSolicitud(celular, ejecutarEnvioARiesgos);
     });
 
     function mostrarPopupEnvioRiesgos() {
@@ -2638,11 +3437,15 @@ document.addEventListener('DOMContentLoaded', () => {
             const currentSol = solicitudes.find(s => s.id === currentSolicitudId);
             if (currentSol) {
                 currentSol.documentos = [...attachedDocs];
-                currentSol.comentarios = document.getElementById('regComentarios').value;
+                if (!isSolicitudReadOnly) {
+                    const comentarioEditable = document.getElementById('regComentarios')?.value || '';
+                    currentSol.comentarios = comentarioEditable;
+                    currentSol.comentariosBorrador = comentarioEditable;
+                }
                 currentSol.chkManualDni = document.getElementById('chkManualDni')?.checked || false;
                 currentSol.chkManualRecibo = document.getElementById('chkManualRecibo')?.checked || false;
                 currentSol.chkManualCotizacion = document.getElementById('chkManualCotizacion')?.checked || false;
-                currentSol.cartera = String(document.getElementById('regCartera')?.textContent || currentSol.cartera || 'EXPRESS').trim().toUpperCase();
+                currentSol.cartera = normalizarCarretera(document.getElementById('regCartera')?.textContent || currentSol.cartera || 'EXPRESS');
                 const celular = document.getElementById('regCelular').value.trim();
                 if (celular) currentSol.telefono = celular;
             }
@@ -2656,6 +3459,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const btnPasarRiesgos = document.getElementById('btnPasarRiesgos');
         if (btnPasarRiesgos) {
             btnPasarRiesgos.style.display = readOnly ? 'none' : 'inline-flex';
+            btnPasarRiesgos.textContent = 'Pasar a Riesgos';
         }
 
         // Lock checkboxes
@@ -2679,7 +3483,7 @@ document.addEventListener('DOMContentLoaded', () => {
         // Disable/enable all inputs/selects in the module page
         const inputsAndSelects = document.querySelectorAll('#moduloRegistroSolicitud input, #moduloRegistroSolicitud select, #moduloRegistroSolicitud textarea');
         inputsAndSelects.forEach(input => {
-            if (input.id !== 'inputHiddenFile') {
+            if (input.id !== 'inputHiddenFile' && input.id !== 'regRespuestaRiesgosComentario') {
                 const isOriginallyReadonly = input.classList.contains('disabled') || input.hasAttribute('readonly');
                 if (readOnly) {
                     input.disabled = true;
@@ -2762,9 +3566,18 @@ document.addEventListener('DOMContentLoaded', () => {
 
             // Set top header info bar
             const carreteraSolicitud = String(solicitud.cartera || 'EXPRESS').trim().toUpperCase();
+            if (normalizarEtapa(solicitud.etapa) === 'SOLICITUD') {
+                solicitud.estado = 'PENDIENTE';
+            }
             document.getElementById('regSolicitudId').textContent = solicitud.id;
-            document.getElementById('regCartera').textContent = carreteraSolicitud;
+            const regCarteraEl = document.getElementById('regCartera');
+            if (regCarteraEl) {
+                regCarteraEl.textContent = carreteraSolicitud;
+                aplicarEstiloCarretera(regCarteraEl, carreteraSolicitud);
+            }
+            document.getElementById('regFechaSimulacion').textContent = solicitud.fecha || '-';
             document.getElementById('regUsuario').textContent = "ALOCHA";
+            actualizarEstadoRegistroResumen(solicitud);
 
             // Set pre-populated fields for Datos Cliente
             document.getElementById('regTipoDoc').value = tipoDoc;
@@ -2843,7 +3656,11 @@ document.addEventListener('DOMContentLoaded', () => {
 
             // Load Checklist state
             attachedDocs = solicitud.documentos ? [...solicitud.documentos] : [];
-            document.getElementById('regComentarios').value = solicitud.comentarios || "";
+            const regComentariosEl = document.getElementById('regComentarios');
+            if (regComentariosEl) {
+                regComentariosEl.value = isReadOnly ? '' : getComentarioEditableSolicitud(solicitud);
+            }
+            toggleRegistroComentariosCards(isReadOnly, solicitud);
             renderChecklistTable();
             actualizarChecklistPorCarretera(carreteraSolicitud);
 
@@ -2864,6 +3681,8 @@ document.addEventListener('DOMContentLoaded', () => {
             // Navigate to Registro screen
             document.querySelectorAll('.module-page').forEach(p => p.classList.remove('active'));
             document.getElementById('moduloRegistroSolicitud').classList.add('active');
+            syncRegistroStickyClientFields();
+            setTimeout(updateRegistroStickyClientBar, 0);
 
             // Deactivate active nav highlights
             navItems.forEach(n => n.classList.remove('active'));
@@ -2898,6 +3717,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (docSolicitudId) docSolicitudId.textContent = solicitud.id || 'EFE004';
         if (docFechaSimulacion) docFechaSimulacion.textContent = solicitud.fecha || '22-05-2026 15:30:00';
         if (docEtapa) docEtapa.textContent = solicitud.etapa || 'DOCUMENTARIA';
+        actualizarEstadoDocumentariaResumen(solicitud);
         if (docResumenNumero) docResumenNumero.textContent = numeroDocumento;
         if (docResumenCliente) docResumenCliente.textContent = solicitud.cliente || 'Pérez García Juan';
         if (docClienteNombre) docClienteNombre.value = solicitud.cliente || 'Juan Julio Ramirez Gonzales';
@@ -3166,6 +3986,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function closeModal() {
+        limpiarConfirmacionSimulacionCancelHandler();
         modalOverlay.classList.remove('active');
         document.body.style.overflow = '';
         const cancelBtn = document.getElementById('modalBtnCancel');
@@ -3203,9 +4024,12 @@ document.addEventListener('DOMContentLoaded', () => {
     // ============================
     // CONFIG BUTTON (placeholder)
     // ============================
-    document.getElementById('btnConfiguracion').addEventListener('click', () => {
-        showToast('Módulo de configuración - Próximamente disponible.', 'info');
-    });
+    const btnConfiguracion = document.getElementById('btnConfiguracion');
+    if (btnConfiguracion) {
+        btnConfiguracion.addEventListener('click', () => {
+            showToast('Módulo de configuración - Próximamente disponible.', 'info');
+        });
+    }
 
     // ============================
     // DISCLAIMER LINK
