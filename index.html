@@ -187,6 +187,8 @@
 
             <!-- ====== VIEW: EVALUACIÓN Y CÁLCULO ====== -->
             <section class="module-page" id="moduloResultado">
+                <div class="stage-navigation-tabs" id="resultadoStageTabs" aria-label="Etapas de la solicitud"></div>
+
                 <!-- Solicitud Info Card -->
                 <div class="card resultado-card resultado-fixed-header">
                     <div class="resultado-fixed-grid">
@@ -213,7 +215,6 @@
                     </div>
                 </div>
 
-
                 <div class="flujo-tabs">
                     <button type="button" class="flujo-tab-btn active" id="tabResultadoBtn" data-target="tabResultado">
                         <span class="flujo-tab-number">01</span>
@@ -230,7 +231,6 @@
                 <div class="flujo-tab-content active" id="tabResultado">
 
                 <div class="page-header">
-                    <h1 class="page-title">Resultado de evaluación preliminar</h1>
                     <p class="page-subtitle">Consulta el resultado de la evaluación preliminar del cliente.</p>
                 </div>
 
@@ -349,7 +349,6 @@
                 <div class="flujo-tab-content" id="tabCalculo">
 
                 <div class="page-header">
-                    <h1 class="page-title">Cálculo</h1>
                     <p class="page-subtitle">Completa los parámetros de crédito para generar la grilla de cuotas y determinar la carretera aplicable.</p>
                 </div>
 
@@ -380,7 +379,7 @@
                                     <input type="text" class="form-control" id="calcTipoCambio" value="3.78">
                                 </div>
                                 <div class="form-group">
-                                    <label class="form-label" for="calcPrecioUsd">Precio del vehículo</label>
+                                    <label class="form-label" for="calcPrecioUsd">Precio del vehículo ($)</label>
                                     <input type="text" class="form-control" id="calcPrecioUsd" value="15000.00">
                                 </div>
                                 <div class="form-group">
@@ -415,6 +414,14 @@
                                         <option value="NO">No</option>
                                     </select>
                                 </div>
+                                <div class="form-group desgravamen-type-group" id="calcTipoSeguroDesgravamenGroup">
+                                    <label class="form-label" for="calcTipoSeguroDesgravamen">Tipo de seguro desgravamen</label>
+                                    <select class="form-control" id="calcTipoSeguroDesgravamen">
+                                        <option value="Individual" selected>Individual</option>
+                                        <option value="Devolución">Devolución</option>
+                                        <option value="Con asistencia">Con asistencia</option>
+                                    </select>
+                                </div>
                             </div>
                         </section>
 
@@ -429,7 +436,7 @@
                                     </select>
                                 </div>
                                 <div class="form-group">
-                                    <label class="form-label" for="calcCostoGps">Costo asociado</label>
+                                    <label class="form-label" for="calcCostoGps">Costo asociado ($)</label>
                                     <input type="text" class="form-control" id="calcCostoGps" value="650.00">
                                 </div>
                             </div>
@@ -480,6 +487,10 @@
                                     <label class="form-label" for="calcIngresoDeclarado">Ingreso declarado (Soles)</label>
                                     <input type="text" class="form-control" id="calcIngresoDeclarado" placeholder="00.00" value="">
                                 </div>
+                                <label class="piloto-check calculo-piloto-inline" for="chkPilotoCondiciones">
+                                    <input type="checkbox" id="chkPilotoCondiciones">
+                                    <span>El caso cumple las condiciones del piloto</span>
+                                </label>
                             </div>
                         </section>
 
@@ -520,10 +531,6 @@
 
                     <div class="form-footer calculo-footer">
                         <div class="calculo-footer-fields">
-                            <label class="piloto-check" for="chkPilotoCondiciones">
-                                <input type="checkbox" id="chkPilotoCondiciones">
-                                <span>El caso cumple las condiciones del piloto</span>
-                            </label>
                             <div class="form-group calculo-telefono-politicas">
                                 <label class="form-label" for="calcTelefonoPoliticas">N° de teléfono</label>
                                 <input type="tel" class="form-control" id="calcTelefonoPoliticas" placeholder="Ingrese teléfono" maxlength="9">
@@ -584,6 +591,8 @@
 
             <!-- ====== VIEW: REGISTRO DE SOLICITUD ====== -->
             <section class="module-page" id="moduloRegistroSolicitud">
+                <div class="stage-navigation-tabs" id="registroStageTabs" aria-label="Etapas de la solicitud"></div>
+
                 <!-- Header Info Bar -->
                 <div class="registro-header-bar">
                     <div class="header-bar-item">
@@ -763,6 +772,10 @@
                             <label class="form-label" for="regConFechaNac">Fecha de nacimiento</label>
                             <input type="text" class="form-control" id="regConFechaNac" placeholder="dd/mm/aaaa">
                         </div>
+                        <div class="form-group w-25">
+                            <label class="form-label" for="regConNacionalidad">Nacionalidad</label>
+                            <input type="text" class="form-control" id="regConNacionalidad" placeholder="Ingrese nacionalidad">
+                        </div>
                     </div>
                 </div>
 
@@ -784,6 +797,14 @@
                         <div class="form-group w-25">
                             <label class="form-label">RUC de empleador (no obligatorio)</label>
                             <input type="text" class="form-control" id="regRucEmpleador" placeholder="Ingrese RUC" maxlength="11">
+                        </div>
+                        <div class="form-group w-25">
+                            <label class="form-label">Nombre centro de laboral</label>
+                            <input type="text" class="form-control" id="regNombreCentroLaboral" placeholder="Ingrese nombre centro laboral">
+                        </div>
+                        <div class="form-group w-25">
+                            <label class="form-label">Dirección</label>
+                            <input type="text" class="form-control" id="regDireccionLaboral" placeholder="Ingrese dirección">
                         </div>
                         <div class="form-group w-25">
                             <label class="form-label">Giro o actividad</label>
@@ -946,8 +967,20 @@
                             </select>
                         </div>
                         <div class="form-group w-25">
-                            <label class="form-label">Vendedor</label>
-                            <input type="text" class="form-control" id="regVehVendedor" value="ALOCHA">
+                            <label class="form-label">Tipo Doc. vendedor</label>
+                            <select class="form-control select-arrow" id="regVehTipoDocVendedor">
+                                <option value="DNI" selected>DNI</option>
+                                <option value="CE">CE</option>
+                                <option value="PAS">PAS</option>
+                            </select>
+                        </div>
+                        <div class="form-group w-25">
+                            <label class="form-label">N° Doc vendedor</label>
+                            <input type="text" class="form-control" id="regVehNroDocVendedor" placeholder="Ingrese documento" maxlength="12" inputmode="numeric">
+                        </div>
+                        <div class="form-group w-25">
+                            <label class="form-label">Nombre completo vendedor</label>
+                            <input type="text" class="form-control" id="regVehVendedor" value="ALOCHA" placeholder="Ingrese nombre completo">
                         </div>
 
                         <div class="form-group w-25">
@@ -1017,7 +1050,7 @@
                     <div class="form-grid">
                         <div class="form-group w-25">
                             <label class="form-label">Producto</label>
-                            <select class="form-control disabled" id="regSimProducto" disabled>
+                            <select class="form-control select-arrow" id="regSimProducto">
                                 <option value="Credito Vehicular" selected>Crédito Vehicular</option>
                             </select>
                         </div>
@@ -1030,28 +1063,28 @@
                         </div>
                         <div class="form-group w-25">
                             <label class="form-label">Moneda Financiamiento</label>
-                            <input type="text" class="form-control disabled" id="regSimMoneda" value="Soles (S/.)" readonly>
+                            <input type="text" class="form-control" id="regSimMoneda" value="Soles (S/.)">
                         </div>
                         <div class="form-group w-25">
                             <label class="form-label">Tipo Cambio</label>
-                            <input type="text" class="form-control disabled" id="regSimTipoCambio" value="3.78" readonly>
+                            <input type="text" class="form-control" id="regSimTipoCambio" value="3.78">
                         </div>
 
                         <div class="form-group w-25">
                             <label class="form-label">Precio Vehículo</label>
-                            <input type="text" class="form-control disabled" id="regSimPrecioVeh" value="$ 28,000.00" readonly>
+                            <input type="text" class="form-control" id="regSimPrecioVeh" value="$ 28,000.00">
                         </div>
                         <div class="form-group w-25">
                             <label class="form-label">Cuota Inicial</label>
-                            <input type="text" class="form-control disabled" id="regSimCuotaInicial" value="$ 8,000.00" readonly>
+                            <input type="text" class="form-control" id="regSimCuotaInicial" value="$ 8,000.00">
                         </div>
                         <div class="form-group w-25">
                             <label class="form-label">TEA</label>
-                            <input type="text" class="form-control disabled" id="regSimTea" value="12.80%" readonly>
+                            <input type="text" class="form-control" id="regSimTea" value="12.80%">
                         </div>
                         <div class="form-group w-25">
                             <label class="form-label">Plazo Meses</label>
-                            <input type="text" class="form-control disabled" id="regSimPlazo" value="24 meses" readonly>
+                            <input type="text" class="form-control" id="regSimPlazo" value="24 meses">
                         </div>
 
                         <div class="form-group w-25">
@@ -1065,7 +1098,7 @@
                         </div>
                         <div class="form-group w-25">
                             <label class="form-label">Total Financiamiento</label>
-                            <input type="text" class="form-control disabled" id="regTotalFinanciamiento" value="S/ 21,480.00" readonly>
+                            <input type="text" class="form-control" id="regTotalFinanciamiento" value="S/ 21,480.00">
                         </div>
                     </div>
                 </div>
@@ -1158,11 +1191,12 @@
                                 <option value="NO">NO</option>
                             </select>
                         </div>
-                        <div class="form-group w-25">
-                            <label class="form-label">Producto Desgravamen</label>
+                        <div class="form-group w-25 desgravamen-type-group" id="regTipoSeguroDesgravamenGroup">
+                            <label class="form-label">Tipo de seguro desgravamen</label>
                             <select class="form-control select-arrow" id="regSegDesgProd">
                                 <option value="Individual" selected>Individual</option>
-                                <option value="Mancomunado">Mancomunado</option>
+                                <option value="Devolución">Devolución</option>
+                                <option value="Con asistencia">Con asistencia</option>
                             </select>
                         </div>
 
@@ -1410,6 +1444,8 @@
             <!-- ====== VIEW: BANDEJA DOCUMENTARIA ====== -->
             <section class="module-page" id="moduloBandejaDocumentaria">
                 <div class="documentaria-page">
+                    <div class="stage-navigation-tabs documentaria-stage-tabs" id="documentariaStageTabs" aria-label="Etapas de la solicitud"></div>
+
                     <div class="documentaria-summary-card">
                         <div class="documentaria-summary-item documentaria-summary-solicitud">
                             <span class="documentaria-summary-label">SOLICITUD</span>
@@ -1438,10 +1474,6 @@
                                 <strong id="docFechaSimulacion">22-05-2026 15:30:00</strong>
                             </div>
                         </div>
-                    </div>
-
-                    <div class="documentaria-title-row">
-                        <h1 class="page-title documentaria-title" id="documentariaPageTitle">Bandeja documentaria</h1>
                     </div>
 
                     <div class="documentaria-shell">

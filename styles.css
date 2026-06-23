@@ -3229,6 +3229,160 @@ select.form-control {
 }
 
 
+
+/* === NAVIGATION TABS — ETAPAS DE SOLICITUD === */
+.stage-navigation-tabs {
+    display: grid;
+    grid-template-columns: repeat(var(--stage-tabs-count, 1), minmax(0, 1fr));
+    align-items: stretch;
+    gap: 0;
+    width: 100%;
+    max-width: 100%;
+    margin: 0 0 26px;
+    padding: 0;
+    background: var(--bg-white);
+    border: 1px solid #dbe3ef;
+    border-radius: var(--radius-lg);
+    box-shadow: 0 10px 24px rgba(13, 47, 129, 0.08);
+    overflow: hidden;
+}
+
+.stage-navigation-tabs[hidden] {
+    display: none !important;
+}
+
+.stage-nav-tab {
+    position: relative;
+    min-width: 0;
+    min-height: 60px;
+    padding: 12px 14px;
+    background: var(--bg-white);
+    border: 0;
+    border-right: 1px solid #dbe3ef;
+    border-radius: 0;
+    box-shadow: none;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    flex: 1 1 0;
+    color: #68758f;
+    cursor: default;
+    opacity: 1;
+    transition: all var(--transition-fast);
+    white-space: normal;
+    text-align: center;
+}
+
+.stage-nav-tab:last-child {
+    border-right: 0;
+}
+
+.stage-nav-tab:disabled {
+    cursor: default;
+    opacity: 1;
+}
+
+.stage-navigation-tabs.stage-nav-clickable .stage-nav-tab:not(:disabled) {
+    cursor: pointer;
+}
+
+.stage-navigation-tabs.stage-nav-clickable .stage-nav-tab:not(:disabled):not(.stage-current):hover {
+    background: rgba(37, 99, 235, 0.08);
+    color: #0755d9;
+    transform: translateY(-1px);
+}
+
+.stage-navigation-tabs.stage-nav-clickable .stage-nav-tab:not(:disabled):focus-visible {
+    outline: 3px solid rgba(37, 99, 235, 0.22);
+    outline-offset: -3px;
+}
+
+.stage-nav-number {
+    width: 26px;
+    height: 26px;
+    border-radius: 999px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex: 0 0 26px;
+    background: #f8fafc;
+    border: 1px solid #cbd5e1;
+    color: #64748b;
+    font-size: 0.74rem;
+    font-weight: 800;
+    line-height: 1;
+}
+
+.stage-nav-title {
+    font-size: 0.88rem;
+    font-weight: 800;
+    line-height: 1.15;
+    color: inherit;
+    text-transform: uppercase;
+    letter-spacing: 0.025em;
+    overflow-wrap: anywhere;
+}
+
+.stage-nav-tab.stage-completed {
+    color: #0755d9;
+    background: #ffffff;
+}
+
+.stage-nav-tab.stage-completed .stage-nav-number {
+    background: #0755d9;
+    border-color: #0755d9;
+    color: #ffffff;
+    box-shadow: 0 4px 10px rgba(7, 85, 217, 0.18);
+}
+
+.stage-nav-tab.stage-pending {
+    color: #68758f;
+    background: #ffffff;
+}
+
+.stage-nav-tab.stage-current {
+    color: var(--text-white);
+    background: linear-gradient(135deg, #0755d9 0%, #0b63f6 100%);
+    border-color: transparent;
+    box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.24), 0 8px 18px rgba(7, 85, 217, 0.22);
+}
+
+.stage-nav-tab.stage-current .stage-nav-number {
+    background: #ffffff;
+    border-color: #ffffff;
+    color: #0755d9;
+    box-shadow: 0 4px 10px rgba(13, 47, 129, 0.18);
+}
+
+.documentaria-stage-tabs {
+    margin-top: 0;
+}
+
+@media (max-width: 768px) {
+    .stage-navigation-tabs {
+        margin-bottom: 18px;
+    }
+
+    .stage-nav-tab {
+        min-height: 46px;
+        padding: 8px 5px;
+        gap: 4px;
+    }
+
+    .stage-nav-number {
+        width: 20px;
+        height: 20px;
+        flex-basis: 20px;
+        font-size: 0.62rem;
+    }
+
+    .stage-nav-title {
+        font-size: 0.6rem;
+        letter-spacing: 0;
+    }
+}
+
 /* === FLUJO RESULTADO / CÁLCULO EN UNA SOLA SECCIÓN === */
 .flujo-tabs {
     display: grid;
@@ -3259,10 +3413,10 @@ select.form-control {
 }
 
 .flujo-tab-btn.active {
-    background: var(--primary-blue-light);
-    border-color: var(--primary-blue-light);
-    color: var(--text-white);
-    box-shadow: 0 8px 18px rgba(13, 47, 129, 0.22);
+    background: rgba(37, 99, 235, 0.12);
+    border-color: rgba(37, 99, 235, 0.42);
+    color: var(--primary-blue);
+    box-shadow: 0 8px 18px rgba(37, 99, 235, 0.12);
 }
 
 .flujo-tab-number {
@@ -3290,7 +3444,7 @@ select.form-control {
 .flujo-tab-btn.active .flujo-tab-number,
 .flujo-tab-btn.active .flujo-tab-title,
 .flujo-tab-btn.active .flujo-tab-subtitle {
-    color: var(--text-white);
+    color: var(--primary-blue);
 }
 
 .flujo-tab-content {
@@ -3306,6 +3460,10 @@ select.form-control {
     .flujo-tabs {
         grid-template-columns: 1fr;
     }
+}
+
+.desgravamen-type-group.is-hidden {
+    display: none !important;
 }
 
 /* Checkbox de condiciones del piloto en Cálculo */
@@ -3332,6 +3490,12 @@ select.form-control {
     accent-color: var(--primary-blue);
     cursor: pointer;
     flex-shrink: 0;
+}
+
+.calculo-piloto-inline {
+    align-self: end;
+    max-width: none;
+    margin-top: 22px;
 }
 
 .popup-politicas-confirmacion {
@@ -3618,10 +3782,10 @@ select.form-control {
 }
 
 .documentaria-tab.active {
-    background: #0755d9;
-    border-color: #0755d9;
-    color: white;
-    box-shadow: 0 4px 12px rgba(7, 85, 217, 0.18);
+    background: rgba(37, 99, 235, 0.12);
+    border-color: rgba(37, 99, 235, 0.42);
+    color: var(--primary-blue);
+    box-shadow: 0 6px 16px rgba(37, 99, 235, 0.12);
 }
 
 .documentaria-tab span,
@@ -4270,7 +4434,7 @@ select.form-control {
 
 .calculo-footer-fields {
     display: grid;
-    grid-template-columns: minmax(280px, 430px) minmax(220px, 320px);
+    grid-template-columns: minmax(220px, 320px);
     gap: 16px;
     align-items: flex-start;
     flex: 1;
@@ -4320,6 +4484,10 @@ select.form-control {
     }
 
     .calculo-footer .piloto-check {
+        margin-top: 0;
+    }
+
+    .calculo-piloto-inline {
         margin-top: 0;
     }
 
@@ -4627,3 +4795,4 @@ select.form-control {
         grid-template-columns: 1fr;
     }
 }
+

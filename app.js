@@ -59,6 +59,200 @@ document.addEventListener('DOMContentLoaded', () => {
     let isSolicitudReadOnly = false;
     let currentCarretera = 'EXPRESS';
     let simulacionConfirmCancelHandler = null;
+    let stageNavigationEnabledForCurrentFlow = false;
+
+
+    // ============================
+    // NAVIGATION TABS — ETAPAS DE SOLICITUD
+    // ============================
+    const ETAPAS_SOLICITUD_NAV = [
+        { key: 'SIMULACION', order: '01', label: 'SIMULACIÓN' },
+        { key: 'SOLICITUD', order: '02', label: 'SOLICITUD' },
+        { key: 'RIESGOS', order: '03', label: 'RIESGOS' },
+        { key: 'DOCUMENTARIA', order: '04', label: 'DOCUMENTARIA' },
+        { key: 'FIRMA', order: '05', label: 'FIRMA' },
+        { key: 'OPERACIONES', order: '06', label: 'OPERACIONES' }
+    ];
+
+    function getEtapaNavigationKey(etapa) {
+        const etapaNormalizada = normalizarEtapa(etapa || 'SIMULACIÓN');
+        if (etapaNormalizada === 'SIMULACION') return 'SIMULACION';
+        if (etapaNormalizada === 'FIRMAS') return 'FIRMA';
+        if (etapaNormalizada === 'ACTIVACION' || etapaNormalizada === 'ACTIVADO') return 'OPERACIONES';
+        return etapaNormalizada;
+    }
+
+    function getStageStatusClass(status) {
+        return String(status || 'PENDIENTE')
+            .trim()
+            .toLowerCase()
+            .normalize('NFD')
+            .replace(/[\u0300-\u036f]/g, '')
+            .replace(/[^a-z0-9]+/g, '-');
+    }
+
+    function canUseStageNavigationForCurrentFlow() {
+        const solicitudActual = solicitudes.find(s => s.id === currentSolicitudId);
+        return !!(stageNavigationEnabledForCurrentFlow && solicitudActual && solicitudActual.habilitarNavegacionEtapas === true);
+    }
+
+    function renderStageNavigation(containerId, etapaActual = 'SIMULACIÓN', estadoActual = 'PENDIENTE', etapaSeleccionada = null) {
+        const container = document.getElementById(containerId);
+        if (!container) return;
+
+        const etapaKey = getEtapaNavigationKey(etapaActual);
+        const currentIndex = ETAPAS_SOLICITUD_NAV.findIndex(stage => stage.key === etapaKey);
+
+        if (currentIndex < 0) {
+            container.innerHTML = '';
+            container.hidden = true;
+            return;
+        }
+
+        const selectedKey = getEtapaNavigationKey(etapaSeleccionada || etapaActual);
+        const selectedIndex = ETAPAS_SOLICITUD_NAV.findIndex(stage => stage.key === selectedKey);
+        const etapasVisibles = ETAPAS_SOLICITUD_NAV.slice(0, currentIndex + 1);
+        const statusClass = getStageStatusClass(estadoActual);
+        const navigationEnabled = canUseStageNavigationForCurrentFlow();
+        container.hidden = false;
+        container.classList.toggle('stage-nav-clickable', navigationEnabled);
+        container.style.setProperty('--stage-tabs-count', etapasVisibles.length);
+        container.innerHTML = etapasVisibles.map((stage, index) => {
+            const isSelected = index === selectedIndex;
+            const isCompleted = index < currentIndex;
+            const stageStateClass = isSelected ? 'stage-current' : (isCompleted ? 'stage-completed' : 'stage-pending');
+            const enabledAttributes = navigationEnabled
+                ? `aria-label="Ir a la etapa ${stage.label}"`
+                : 'disabled aria-disabled="true"';
+
+            return `
+                <button type="button" class="stage-nav-tab ${stageStateClass} stage-status-${statusClass}" ${enabledAttributes} ${isSelected ? 'aria-current="step"' : ''} data-stage="${stage.key}">
+                    <span class="stage-nav-number" aria-hidden="true">${stage.order}</span>
+                    <span class="stage-nav-title">${escapeHtml(stage.label)}</span>
+                </button>
+            `;
+        }).join('');
+    }
+
+    function showStageModule(moduleId) {
+        document.querySelectorAll('.module-page').forEach(p => p.classList.remove('active'));
+        const module = document.getElementById(moduleId);
+        if (module) module.classList.add('active');
+        navItems.forEach(n => n.classList.remove('active'));
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+
+    function renderCurrentStageNavigation(selectedStageKey) {
+        const solicitudActual = solicitudes.find(s => s.id === currentSolicitudId);
+        if (!solicitudActual) return;
+        const activePage = document.querySelector('.module-page.active');
+        if (!activePage) return;
+
+        if (activePage.id === 'moduloResultado') {
+            renderStageNavigation('resultadoStageTabs', solicitudActual.etapa || 'SIMULACIÓN', solicitudActual.estado || 'PENDIENTE', selectedStageKey || 'SIMULACION');
+        } else if (activePage.id === 'moduloRegistroSolicitud') {
+            renderStageNavigation('registroStageTabs', solicitudActual.etapa || 'SOLICITUD', solicitudActual.estado || 'PENDIENTE', selectedStageKey || 'SOLICITUD');
+        } else if (activePage.id === 'moduloBandejaDocumentaria') {
+            renderStageNavigation('documentariaStageTabs', solicitudActual.etapa || 'DOCUMENTARIA', solicitudActual.estado || 'PENDIENTE', selectedStageKey || getEtapaNavigationKey(solicitudActual.etapa || 'DOCUMENTARIA'));
+        }
+    }
+
+    function showResultadoStageFromNavigation(solicitud) {
+        if (!solicitud) return;
+        currentSolicitudId = solicitud.id;
+        const parts = (solicitud.documento || '').split(' - ');
+        const tipoDoc = parts[0] || 'DNI';
+        const nroDoc = parts[1] || '';
+        const mockData = generateMockEvaluacion(nroDoc);
+
+        document.getElementById('resSolicitudId').textContent = solicitud.id;
+        document.getElementById('resFechaHora').textContent = solicitud.fecha || '-';
+        setResultadoDocumento(tipoDoc, nroDoc);
+        actualizarConyugeResultado();
+        document.getElementById('resMontoPreaprobado').textContent = `S/ ${mockData.montoPreaprobado}`;
+        document.getElementById('resCalificacion').textContent = mockData.califica ? 'CALIFICA' : 'NO CALIFICA';
+        document.getElementById('resCalificacionMsg').textContent = mockData.califica
+            ? 'El cliente cumple con los criterios de evaluación.'
+            : 'El cliente no cumple con los criterios de evaluación.';
+        document.getElementById('resSegmentoRiesgo').textContent = mockData.segmentoRiesgo;
+        document.getElementById('resIngresoEstimado').textContent = `S/ ${mockData.ingresoEstimado}`;
+        syncIngresoEstimadoCalculo();
+        document.getElementById('resCuotaMaxima').textContent = `S/ ${mockData.capacidadCuotaMaxima}`;
+        const calcCuotaMaxima = document.getElementById('calcCuotaMaxima');
+        if (calcCuotaMaxima) calcCuotaMaxima.value = `S/ ${mockData.capacidadCuotaMaxima}`;
+
+        const calificacionCard = document.querySelector('.resultado-calificacion');
+        const calificacionIcon = calificacionCard?.querySelector('.resultado-calificacion-icon .material-icons-outlined');
+        if (calificacionCard && calificacionIcon) {
+            if (mockData.califica) {
+                calificacionCard.classList.add('califica');
+                calificacionCard.classList.remove('no-califica');
+                calificacionIcon.textContent = 'check_circle';
+            } else {
+                calificacionCard.classList.remove('califica');
+                calificacionCard.classList.add('no-califica');
+                calificacionIcon.textContent = 'cancel';
+            }
+        }
+
+        showStageModule('moduloResultado');
+        renderStageNavigation('resultadoStageTabs', solicitud.etapa || 'SIMULACIÓN', solicitud.estado || 'PENDIENTE', 'SIMULACION');
+        showFlujoTab('resultado');
+    }
+
+    function showSolicitudStageFromNavigation(solicitud) {
+        if (!solicitud) return;
+        currentSolicitudId = solicitud.id;
+        const regSolicitudId = document.getElementById('regSolicitudId');
+
+        if (regSolicitudId && regSolicitudId.textContent === solicitud.id) {
+            actualizarEstadoRegistroResumen(solicitud);
+            renderStageNavigation('registroStageTabs', solicitud.etapa || 'SOLICITUD', solicitud.estado || 'PENDIENTE', 'SOLICITUD');
+            showStageModule('moduloRegistroSolicitud');
+            syncRegistroStickyClientFields();
+            setTimeout(updateRegistroStickyClientBar, 0);
+            return;
+        }
+
+        if (normalizarEtapa(solicitud.etapa) === 'SIMULACION') {
+            continuarARegistroSolicitud();
+            return;
+        }
+
+        showToast('La pantalla de Solicitud estará disponible después de continuar desde Cálculo.', 'warning');
+    }
+
+    function navigateToStageFromNavigation(stageKey) {
+        if (!canUseStageNavigationForCurrentFlow()) return;
+        const solicitudActual = solicitudes.find(s => s.id === currentSolicitudId);
+        if (!solicitudActual) return;
+
+        saveCurrentRegistrationState();
+        persistCurrentDocumentariaState();
+
+        const targetStage = getEtapaNavigationKey(stageKey);
+        const currentStage = getEtapaNavigationKey(solicitudActual.etapa || 'SIMULACIÓN');
+        const currentIndex = ETAPAS_SOLICITUD_NAV.findIndex(stage => stage.key === currentStage);
+        const targetIndex = ETAPAS_SOLICITUD_NAV.findIndex(stage => stage.key === targetStage);
+        if (targetIndex < 0 || targetIndex > currentIndex) return;
+
+        if (targetStage === 'SIMULACION') {
+            showResultadoStageFromNavigation(solicitudActual);
+        } else if (targetStage === 'SOLICITUD' || targetStage === 'RIESGOS') {
+            showSolicitudStageFromNavigation(solicitudActual);
+        } else if (['DOCUMENTARIA', 'FIRMA', 'OPERACIONES'].includes(targetStage)) {
+            showBandejaDocumentaria(solicitudActual);
+            renderStageNavigation('documentariaStageTabs', solicitudActual.etapa || targetStage, solicitudActual.estado || 'PENDIENTE', targetStage);
+        }
+    }
+
+    document.addEventListener('click', (event) => {
+        const stageTab = event.target.closest('.stage-nav-tab');
+        if (!stageTab || stageTab.disabled || !stageTab.dataset.stage) return;
+        if (!canUseStageNavigationForCurrentFlow()) return;
+        event.preventDefault();
+        navigateToStageFromNavigation(stageTab.dataset.stage);
+    });
 
     // ============================
     // BARRA FIJA — IDENTIFICACIÓN DEL CLIENTE EN SOLICITUD
@@ -362,6 +556,7 @@ document.addEventListener('DOMContentLoaded', () => {
         item.addEventListener('click', (e) => {
             e.preventDefault();
             saveCurrentRegistrationState();
+            stageNavigationEnabledForCurrentFlow = false;
             const targetModule = item.dataset.module;
 
             // Update active nav
@@ -522,9 +717,46 @@ document.addEventListener('DOMContentLoaded', () => {
         return 'SI';
     }
 
+    function getTipoSeguroDesgravamenCalculoValue() {
+        const calcTipoSeguroDesgravamen = document.getElementById('calcTipoSeguroDesgravamen');
+        const value = calcTipoSeguroDesgravamen ? String(calcTipoSeguroDesgravamen.value || '').trim() : '';
+        return value || 'Individual';
+    }
+
+    function updateTipoSeguroDesgravamenCalculoVisibility() {
+        const calcDesgravamen = document.getElementById('calcDesgravamen');
+        const tipoGroup = document.getElementById('calcTipoSeguroDesgravamenGroup');
+        const tipoSelect = document.getElementById('calcTipoSeguroDesgravamen');
+        const habilitarTipo = String(calcDesgravamen?.value || '').trim().toUpperCase() === 'SI';
+
+        if (tipoGroup) {
+            tipoGroup.classList.toggle('is-hidden', !habilitarTipo);
+        }
+        if (tipoSelect) {
+            tipoSelect.disabled = !habilitarTipo;
+            tipoSelect.classList.toggle('disabled', !habilitarTipo);
+        }
+    }
+
+    function updateTipoSeguroDesgravamenSolicitudVisibility() {
+        const regSegDesgravamen = document.getElementById('regSegDesgravamen');
+        const tipoGroup = document.getElementById('regTipoSeguroDesgravamenGroup');
+        const tipoSelect = document.getElementById('regSegDesgProd');
+        const habilitarTipo = String(regSegDesgravamen?.value || '').trim().toUpperCase() === 'SI';
+
+        if (tipoGroup) {
+            tipoGroup.classList.toggle('is-hidden', !habilitarTipo);
+        }
+        if (tipoSelect) {
+            tipoSelect.disabled = !habilitarTipo;
+            tipoSelect.classList.toggle('disabled', !habilitarTipo);
+        }
+    }
+
     function aplicarSegurosSolicitudDesdeCalculo(solicitud = null) {
         const regSegVehicular = document.getElementById('regSegVehicular');
         const regSegDesgravamen = document.getElementById('regSegDesgravamen');
+        const regTipoSeguroDesgravamen = document.getElementById('regSegDesgProd');
 
         if (regSegVehicular) {
             regSegVehicular.value = solicitud?.seguroVehicular || getSeguroVehicularCalculoValue();
@@ -532,6 +764,10 @@ document.addEventListener('DOMContentLoaded', () => {
         if (regSegDesgravamen) {
             regSegDesgravamen.value = solicitud?.seguroDesgravamen || getSeguroDesgravamenCalculoValue();
         }
+        if (regTipoSeguroDesgravamen) {
+            regTipoSeguroDesgravamen.value = solicitud?.tipoSeguroDesgravamen || getTipoSeguroDesgravamenCalculoValue();
+        }
+        updateTipoSeguroDesgravamenSolicitudVisibility();
     }
 
     function aplicarUbicacionSolicitud(concesionario, sucursal) {
@@ -769,7 +1005,7 @@ document.addEventListener('DOMContentLoaded', () => {
     function limpiarConyugeSolicitud() {
         const regConyugeCard = document.getElementById('regConyugeCard');
         if (regConyugeCard) regConyugeCard.style.display = 'none';
-        ['regConTipoDoc', 'regConNroDoc', 'regConApePaterno', 'regConApeMaterno', 'regConFechaNac'].forEach(id => {
+        ['regConTipoDoc', 'regConNroDoc', 'regConApePaterno', 'regConApeMaterno', 'regConFechaNac', 'regConNacionalidad'].forEach(id => {
             const field = document.getElementById(id);
             if (field) field.value = '';
         });
@@ -791,12 +1027,14 @@ document.addEventListener('DOMContentLoaded', () => {
         const regConApePaterno = document.getElementById('regConApePaterno');
         const regConApeMaterno = document.getElementById('regConApeMaterno');
         const regConFechaNac = document.getElementById('regConFechaNac');
+        const regConNacionalidad = document.getElementById('regConNacionalidad');
 
         if (regConTipoDoc) regConTipoDoc.value = conyuge.tipoDoc || 'DNI';
         if (regConNroDoc) regConNroDoc.value = conyuge.nroDoc || '';
         if (regConApePaterno) regConApePaterno.value = conyuge.apellidoPaterno || '';
         if (regConApeMaterno) regConApeMaterno.value = conyuge.apellidoMaterno || '';
         if (regConFechaNac) regConFechaNac.value = conyuge.fechaNacimiento || '';
+        if (regConNacionalidad) regConNacionalidad.value = conyuge.nacionalidad || '';
 
         setEstadoCivilCasadoDesdeConyuge();
     }
@@ -809,7 +1047,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 nroDoc: conyugeSimulacion.nroDoc,
                 apellidoPaterno: solicitud?.conyuge?.apellidoPaterno || '',
                 apellidoMaterno: solicitud?.conyuge?.apellidoMaterno || '',
-                fechaNacimiento: solicitud?.conyuge?.fechaNacimiento || ''
+                fechaNacimiento: solicitud?.conyuge?.fechaNacimiento || '',
+                nacionalidad: solicitud?.conyuge?.nacionalidad || ''
             };
             if (solicitud) solicitud.conyuge = conyugeSolicitud;
             aplicarConyugeSolicitud(conyugeSolicitud);
@@ -867,9 +1106,11 @@ document.addEventListener('DOMContentLoaded', () => {
             tienda: headerTienda,
             etapa: 'SIMULACIÓN',
             estado: 'PENDIENTE',
-            telefono: nroTelefono.value.trim() || '922159933'
+            telefono: nroTelefono.value.trim() || '922159933',
+            habilitarNavegacionEtapas: true
         };
         solicitudes.unshift(newSimSol);
+        stageNavigationEnabledForCurrentFlow = true;
 
         // Populate the resultado view
         document.getElementById('resSolicitudId').textContent = solicitudId;
@@ -906,6 +1147,7 @@ document.addEventListener('DOMContentLoaded', () => {
         // Switch views: hide all, show resultado
         document.querySelectorAll('.module-page').forEach(p => p.classList.remove('active'));
         document.getElementById('moduloResultado').classList.add('active');
+        renderStageNavigation('resultadoStageTabs', newSimSol.etapa, newSimSol.estado);
         showFlujoTab('resultado');
 
         // Update sidebar active state
@@ -978,6 +1220,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Regresar button — go back to simulación form
     document.getElementById('btnRegresar').addEventListener('click', () => {
+        stageNavigationEnabledForCurrentFlow = false;
         document.querySelectorAll('.module-page').forEach(p => p.classList.remove('active'));
         document.getElementById('moduloSimulacion').classList.add('active');
 
@@ -1016,6 +1259,8 @@ document.addEventListener('DOMContentLoaded', () => {
             currentSol.estado = 'PENDIENTE';
             currentSol.cartera = carreteraActual;
             currentSol.tipoCambio = getTipoCambioCalculoValue();
+            currentSol.seguroDesgravamen = getSeguroDesgravamenCalculoValue();
+            currentSol.tipoSeguroDesgravamen = getTipoSeguroDesgravamenCalculoValue();
         }
 
         // Set top header info bar
@@ -1056,6 +1301,8 @@ document.addEventListener('DOMContentLoaded', () => {
         // Reset Datos Laborales
         document.getElementById('regCatLaboral').value = "";
         document.getElementById('regRucEmpleador').value = "";
+        document.getElementById('regNombreCentroLaboral').value = "";
+        document.getElementById('regDireccionLaboral').value = "";
         document.getElementById('regGiroActividad').value = "";
         document.getElementById('regCargo').value = "";
         document.getElementById('regFechaIngresoLab').value = "";
@@ -1066,7 +1313,9 @@ document.addEventListener('DOMContentLoaded', () => {
         // Pre-populate Vehiculo
         document.getElementById('regVehEstado').value = "Nuevo";
         aplicarUbicacionSolicitud(currentSol?.concesionario, currentSol?.tienda);
-        document.getElementById('regVehVendedor').value = "ALOCHA";
+        document.getElementById('regVehTipoDocVendedor').value = currentSol?.vendedorTipoDoc || "DNI";
+        document.getElementById('regVehNroDocVendedor').value = currentSol?.vendedorNroDoc || "";
+        document.getElementById('regVehVendedor').value = currentSol?.vendedor || "ALOCHA";
         document.getElementById('regVehMarca').value = "Toyota";
         document.getElementById('regVehModelo').value = "Corolla";
         document.getElementById('regVehAnio').value = "2026";
@@ -1098,7 +1347,7 @@ document.addEventListener('DOMContentLoaded', () => {
         // Pre-populate Seguros
         aplicarSegurosSolicitudDesdeCalculo(currentSol);
         document.getElementById('regSegVehCosto').value = "S/ 1,200.00";
-        document.getElementById('regSegDesgProd').value = "Individual";
+        document.getElementById('regSegDesgProd').value = currentSol?.tipoSeguroDesgravamen || getTipoSeguroDesgravamenCalculoValue();
         document.getElementById('regSegDesgCosto').value = "$ 0.00";
         document.getElementById('regSegOptativo').value = "No";
         document.getElementById('regSegOptCosto').value = "NO";
@@ -1479,11 +1728,27 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    ['calcTipoSeguroVehicular', 'calcDesgravamen'].forEach(id => {
+    const calcDesgravamenControl = document.getElementById('calcDesgravamen');
+    if (calcDesgravamenControl) {
+        calcDesgravamenControl.addEventListener('change', () => {
+            updateTipoSeguroDesgravamenCalculoVisibility();
+            aplicarSegurosSolicitudDesdeCalculo();
+        });
+    }
+
+    ['calcTipoSeguroVehicular', 'calcTipoSeguroDesgravamen'].forEach(id => {
         const control = document.getElementById(id);
         if (!control) return;
         control.addEventListener('change', () => aplicarSegurosSolicitudDesdeCalculo());
     });
+
+    const regSegDesgravamenControl = document.getElementById('regSegDesgravamen');
+    if (regSegDesgravamenControl) {
+        regSegDesgravamenControl.addEventListener('change', updateTipoSeguroDesgravamenSolicitudVisibility);
+    }
+
+    updateTipoSeguroDesgravamenCalculoVisibility();
+    updateTipoSeguroDesgravamenSolicitudVisibility();
 
     // ========================================
     // REGISTRO DE SOLICITUD - Handlers & Logic
@@ -1539,6 +1804,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function volverABandejaEntradaDesdeSolicitud() {
+        stageNavigationEnabledForCurrentFlow = false;
         document.querySelectorAll('.module-page').forEach(p => p.classList.remove('active'));
         document.getElementById('moduloBandeja').classList.add('active');
 
@@ -1569,15 +1835,28 @@ document.addEventListener('DOMContentLoaded', () => {
     const regEstadoCivil = document.getElementById('regEstadoCivil');
     const regSeparacionBienes = document.getElementById('regSeparacionBienes');
     regEstadoCivil.addEventListener('change', () => {
+        const regConyugeCard = document.getElementById('regConyugeCard');
         if (regEstadoCivil.value === 'CASADO') {
             regSeparacionBienes.disabled = false;
             regSeparacionBienes.classList.remove('disabled');
+            if (regConyugeCard) regConyugeCard.style.display = 'block';
+            const regConTipoDoc = document.getElementById('regConTipoDoc');
+            if (regConTipoDoc && !regConTipoDoc.value) regConTipoDoc.value = 'DNI';
         } else {
             regSeparacionBienes.disabled = true;
             regSeparacionBienes.classList.add('disabled');
             regSeparacionBienes.value = '';
+            limpiarConyugeSolicitud();
         }
     });
+
+    const regVehNroDocVendedor = document.getElementById('regVehNroDocVendedor');
+    if (regVehNroDocVendedor) {
+        regVehNroDocVendedor.addEventListener('input', (e) => {
+            e.target.value = e.target.value.replace(/\D/g, '').slice(0, 12);
+        });
+    }
+
 
     // Department / Province / District cascade populating
     const regDepartamento = document.getElementById('regDepartamento');
@@ -2422,11 +2701,13 @@ document.addEventListener('DOMContentLoaded', () => {
         if (regFechaSimulacion) {
             regFechaSimulacion.textContent = solicitud.fecha || regFechaSimulacion.textContent || '-';
         }
+        renderStageNavigation('registroStageTabs', solicitud.etapa || 'SOLICITUD', solicitud.estado || 'PENDIENTE', 'SOLICITUD');
     }
 
     function updateDocumentariaTitleAndStage() {
         if (!currentDocumentariaSolicitud) return;
-        const isOperaciones = isOperacionesObservadoSolicitud(currentDocumentariaSolicitud);
+        const etapaNormalizada = normalizarEtapa(currentDocumentariaSolicitud.etapa);
+        const isOperaciones = isOperacionesObservadoSolicitud(currentDocumentariaSolicitud) || etapaNormalizada === 'OPERACIONES' || etapaNormalizada === 'ACTIVACION';
         const isFirma = isSolicitudEnFirma(currentDocumentariaSolicitud);
         const docEtapa = document.getElementById('docEtapa');
 
@@ -2434,9 +2715,10 @@ document.addEventListener('DOMContentLoaded', () => {
             documentariaPageTitle.textContent = isOperaciones ? 'Operaciones' : (isFirma ? 'Firmas' : 'Bandeja documentaria');
         }
         if (docEtapa) {
-            docEtapa.textContent = currentDocumentariaSolicitud.etapa || 'DOCUMENTARIA';
+            docEtapa.textContent = etapaNormalizada === 'ACTIVACION' ? 'OPERACIONES' : (currentDocumentariaSolicitud.etapa || 'DOCUMENTARIA');
         }
         actualizarEstadoDocumentariaResumen(currentDocumentariaSolicitud);
+        renderStageNavigation('documentariaStageTabs', currentDocumentariaSolicitud.etapa || 'DOCUMENTARIA', currentDocumentariaSolicitud.estado || 'PENDIENTE', getEtapaNavigationKey(currentDocumentariaSolicitud.etapa || 'DOCUMENTARIA'));
     }
 
     function avanzarSolicitudEFE004AFirmaPendiente() {
@@ -2750,6 +3032,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function volverABandejaEntradaDesdeDocumentaria() {
+        stageNavigationEnabledForCurrentFlow = false;
         document.querySelectorAll('.module-page').forEach(p => p.classList.remove('active'));
         document.getElementById('moduloBandeja').classList.add('active');
         navItems.forEach(n => n.classList.remove('active'));
@@ -2806,6 +3089,7 @@ document.addEventListener('DOMContentLoaded', () => {
         currentDocumentariaSolicitud.downloadedPostAprobacionDocs = Array.from(downloadedPostAprobacionDocs);
         currentDocumentariaSolicitud.etapa = 'OPERACIONES';
         currentDocumentariaSolicitud.estado = esRespuestaOperaciones ? currentDocumentariaSolicitud.estado : 'PENDIENTE';
+        updateDocumentariaTitleAndStage();
         if (esRespuestaOperaciones) {
             registrarRespuestaEjecutivoSolicitud(currentDocumentariaSolicitud, 'operaciones', docChecklist2ComentarioValue, formatFechaHoraActual());
             currentDocumentariaSolicitud.operacionesRespuestaEnviada = true;
@@ -3113,12 +3397,15 @@ document.addEventListener('DOMContentLoaded', () => {
             existingSol.telefono = celularText;
             existingSol.concesionario = concesionarioStr;
             existingSol.tienda = tiendaStr;
+            existingSol.vendedorTipoDoc = document.getElementById('regVehTipoDocVendedor')?.value || existingSol.vendedorTipoDoc;
+            existingSol.vendedorNroDoc = document.getElementById('regVehNroDocVendedor')?.value || existingSol.vendedorNroDoc;
             existingSol.vendedor = document.getElementById('regVehVendedor')?.value || existingSol.vendedor;
             existingSol.tipoCambio = document.getElementById('regSimTipoCambio')?.value || existingSol.tipoCambio;
             existingSol.gastosRegistrales = document.getElementById('regGastosRegistrales')?.value || existingSol.gastosRegistrales;
             existingSol.gastosDelivery = document.getElementById('regGastosDelivery')?.value || existingSol.gastosDelivery;
             existingSol.seguroVehicular = document.getElementById('regSegVehicular')?.value || existingSol.seguroVehicular;
             existingSol.seguroDesgravamen = document.getElementById('regSegDesgravamen')?.value || existingSol.seguroDesgravamen;
+            existingSol.tipoSeguroDesgravamen = document.getElementById('regSegDesgProd')?.value || existingSol.tipoSeguroDesgravamen;
             registrarComentarioEjecutivoSolicitud(existingSol, comentarioRegistro, fechaStr);
             
             // Set the correct calculated amount from the form
@@ -3139,12 +3426,15 @@ document.addEventListener('DOMContentLoaded', () => {
                 telefono: celularText,
                 concesionario: concesionarioStr,
                 tienda: tiendaStr,
+                vendedorTipoDoc: document.getElementById('regVehTipoDocVendedor')?.value || 'DNI',
+                vendedorNroDoc: document.getElementById('regVehNroDocVendedor')?.value || '',
                 vendedor: document.getElementById('regVehVendedor')?.value || 'ALOCHA',
                 tipoCambio: document.getElementById('regSimTipoCambio')?.value || getTipoCambioCalculoValue(),
                 gastosRegistrales: document.getElementById('regGastosRegistrales')?.value || 'S/ 0.00',
                 gastosDelivery: document.getElementById('regGastosDelivery')?.value || 'S/ 0.00',
                 seguroVehicular: document.getElementById('regSegVehicular')?.value || getSeguroVehicularCalculoValue(),
-                seguroDesgravamen: document.getElementById('regSegDesgravamen')?.value || getSeguroDesgravamenCalculoValue()
+                seguroDesgravamen: document.getElementById('regSegDesgravamen')?.value || getSeguroDesgravamenCalculoValue(),
+                tipoSeguroDesgravamen: document.getElementById('regSegDesgProd')?.value || getTipoSeguroDesgravamenCalculoValue()
             };
             registrarComentarioEjecutivoSolicitud(newSol, comentarioRegistro, fechaStr);
             solicitudes.unshift(newSol);
@@ -3153,6 +3443,7 @@ document.addEventListener('DOMContentLoaded', () => {
         actualizarEstadoRegistroResumen(solicitudes.find(s => s.id === solId) || { etapa: 'RIESGOS', estado: 'PENDIENTE' });
 
         // Navigate to Bandeja
+        stageNavigationEnabledForCurrentFlow = false;
         document.querySelectorAll('.module-page').forEach(page => page.classList.remove('active'));
         document.getElementById('moduloBandeja').classList.add('active');
         
@@ -3727,6 +4018,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (celular) currentSol.telefono = celular;
                 currentSol.concesionario = document.getElementById('regVehConcesionario')?.value || currentSol.concesionario;
                 currentSol.tienda = document.getElementById('regVehTienda')?.value || currentSol.tienda;
+                currentSol.vendedorTipoDoc = document.getElementById('regVehTipoDocVendedor')?.value || currentSol.vendedorTipoDoc;
+                currentSol.vendedorNroDoc = document.getElementById('regVehNroDocVendedor')?.value || currentSol.vendedorNroDoc;
                 currentSol.vendedor = document.getElementById('regVehVendedor')?.value || currentSol.vendedor;
                 currentSol.tipoCambio = document.getElementById('regSimTipoCambio')?.value || currentSol.tipoCambio;
 
@@ -3738,7 +4031,8 @@ document.addEventListener('DOMContentLoaded', () => {
                         nroDoc: document.getElementById('regConNroDoc')?.value || '',
                         apellidoPaterno: document.getElementById('regConApePaterno')?.value || '',
                         apellidoMaterno: document.getElementById('regConApeMaterno')?.value || '',
-                        fechaNacimiento: document.getElementById('regConFechaNac')?.value || ''
+                        fechaNacimiento: document.getElementById('regConFechaNac')?.value || '',
+                        nacionalidad: document.getElementById('regConNacionalidad')?.value || ''
                     };
                 } else {
                     currentSol.conyuge = null;
@@ -3796,6 +4090,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // REVISAR ACTION ROUTER (IN-PROGRESS & READ-ONLY FLOWS)
     // ============================
     function handleRevisarAction(solicitud) {
+        stageNavigationEnabledForCurrentFlow = false;
         currentSolicitudId = solicitud.id; // Set active request ID
 
         if (solicitud.etapa === 'SIMULACIÓN') {
@@ -3839,6 +4134,8 @@ document.addEventListener('DOMContentLoaded', () => {
             // Navigate to resultado screen
             document.querySelectorAll('.module-page').forEach(p => p.classList.remove('active'));
             document.getElementById('moduloResultado').classList.add('active');
+            renderStageNavigation('resultadoStageTabs', solicitud.etapa || 'SIMULACIÓN', solicitud.estado || 'PENDIENTE');
+            showFlujoTab('resultado');
 
             // Deactivate active nav highlights
             navItems.forEach(n => n.classList.remove('active'));
@@ -3846,7 +4143,7 @@ document.addEventListener('DOMContentLoaded', () => {
             window.scrollTo({ top: 0, behavior: 'smooth' });
             showToast(`Continuando Simulación para ${solicitud.id}`, 'info');
 
-        } else if ((solicitud.etapa === 'DOCUMENTARIA' && solicitud.estado === 'PENDIENTE') || solicitud.etapa === 'FIRMA' || solicitud.documentariaEnviadaOperaciones || isOperacionesObservadoSolicitud(solicitud)) {
+        } else if (['DOCUMENTARIA', 'FIRMA', 'FIRMAS', 'OPERACIONES', 'ACTIVACION'].includes(normalizarEtapa(solicitud.etapa)) || solicitud.documentariaEnviadaOperaciones || isOperacionesObservadoSolicitud(solicitud)) {
             showBandejaDocumentaria(solicitud);
 
         } else if (solicitud.etapa === 'SOLICITUD' || solicitud.etapa === 'RIESGOS') {
@@ -3902,6 +4199,8 @@ document.addEventListener('DOMContentLoaded', () => {
             // Reset Laborales
             document.getElementById('regCatLaboral').value = "";
             document.getElementById('regRucEmpleador').value = "";
+            document.getElementById('regNombreCentroLaboral').value = "";
+            document.getElementById('regDireccionLaboral').value = "";
             document.getElementById('regGiroActividad').value = "";
             document.getElementById('regCargo').value = "";
             document.getElementById('regFechaIngresoLab').value = "";
@@ -3912,7 +4211,9 @@ document.addEventListener('DOMContentLoaded', () => {
             // Pre-populate Vehiculo using Concesionario/Tienda from the solicitation
             document.getElementById('regVehEstado').value = "Nuevo";
             aplicarUbicacionSolicitud(solicitud.concesionario, solicitud.tienda);
-            document.getElementById('regVehVendedor').value = "ALOCHA";
+            document.getElementById('regVehTipoDocVendedor').value = solicitud.vendedorTipoDoc || "DNI";
+            document.getElementById('regVehNroDocVendedor').value = solicitud.vendedorNroDoc || "";
+            document.getElementById('regVehVendedor').value = solicitud.vendedor || "ALOCHA";
             document.getElementById('regVehMarca').value = "Toyota";
             document.getElementById('regVehModelo').value = "Corolla";
             document.getElementById('regVehAnio').value = "2026";
@@ -3944,7 +4245,7 @@ document.addEventListener('DOMContentLoaded', () => {
             // Pre-populate Seguros
             aplicarSegurosSolicitudDesdeCalculo(solicitud);
             document.getElementById('regSegVehCosto').value = "S/ 1,200.00";
-            document.getElementById('regSegDesgProd').value = "Individual";
+            document.getElementById('regSegDesgProd').value = solicitud.tipoSeguroDesgravamen || getTipoSeguroDesgravamenCalculoValue();
             document.getElementById('regSegDesgCosto').value = "$ 0.00";
             document.getElementById('regSegOptativo').value = "No";
             document.getElementById('regSegOptCosto').value = "NO";
@@ -4012,7 +4313,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (documentariaPageTitle) documentariaPageTitle.textContent = isOperaciones ? 'Operaciones' : (isSolicitudEnFirma(solicitud) ? 'Firmas' : 'Bandeja documentaria');
         if (docSolicitudId) docSolicitudId.textContent = solicitud.id || 'EFE004';
         if (docFechaSimulacion) docFechaSimulacion.textContent = solicitud.fecha || '22-05-2026 15:30:00';
-        if (docEtapa) docEtapa.textContent = solicitud.etapa || 'DOCUMENTARIA';
+        if (docEtapa) docEtapa.textContent = normalizarEtapa(solicitud.etapa) === 'ACTIVACION' ? 'OPERACIONES' : (solicitud.etapa || 'DOCUMENTARIA');
         actualizarEstadoDocumentariaResumen(solicitud);
         if (docResumenNumero) docResumenNumero.textContent = numeroDocumento;
         if (docResumenCliente) docResumenCliente.textContent = solicitud.cliente || 'Pérez García Juan';
