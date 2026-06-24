@@ -4459,8 +4459,24 @@ select.form-control {
     align-items: center;
 }
 
+.resultado-fixed-header.is-calculo .resultado-fixed-grid {
+    grid-template-columns: minmax(190px, 1.15fr) minmax(135px, 0.8fr) minmax(120px, 0.7fr) minmax(120px, 0.7fr) minmax(210px, 1fr);
+}
+
 .resultado-fixed-item {
     min-width: 0;
+}
+
+.resultado-fixed-calculo-only {
+    display: none;
+}
+
+.resultado-fixed-header.is-calculo .resultado-fixed-resultado-only {
+    display: none;
+}
+
+.resultado-fixed-header.is-calculo .resultado-fixed-calculo-only {
+    display: block;
 }
 
 .resultado-fixed-header .resultado-solicitud-id {

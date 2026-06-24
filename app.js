@@ -929,6 +929,37 @@ document.addEventListener('DOMContentLoaded', () => {
         const targetBtn = document.querySelector(`[data-target="${targetId}"]`);
         if (targetTab) targetTab.classList.add('active');
         if (targetBtn) targetBtn.classList.add('active');
+        updateResultadoFixedHeader(tabName);
+    }
+
+    function getResultadoTextValue(elementId, fallback = '-') {
+        const element = document.getElementById(elementId);
+        if (!element) return fallback;
+        return (element.value || element.textContent || '').trim() || fallback;
+    }
+
+    function updateResultadoFixedHeader(tabName) {
+        const fixedHeader = document.querySelector('.resultado-fixed-header');
+        if (!fixedHeader) return;
+
+        const isCalculo = tabName === 'calculo';
+        fixedHeader.classList.toggle('is-calculo', isCalculo);
+
+        if (!isCalculo) return;
+
+        const capacidadMaxima = document.getElementById('resFixedCapacidadMaxima');
+        const inicialMinima = document.getElementById('resFixedInicialMinima');
+        const segmento = document.getElementById('resFixedSegmento');
+
+        if (capacidadMaxima) {
+            capacidadMaxima.textContent = getResultadoTextValue('resCuotaMaxima', getResultadoTextValue('calcCuotaMaxima', 'S/ 0.00'));
+        }
+        if (inicialMinima) {
+            inicialMinima.textContent = getResultadoTextValue('resInicialMinimaPorcentaje', '10%');
+        }
+        if (segmento) {
+            segmento.textContent = getResultadoTextValue('resSegmentoRiesgo', '-');
+        }
     }
 
 

@@ -197,13 +197,25 @@
                             <h2 class="resultado-solicitud-id" id="resSolicitudId">SOL-2026-00012345</h2>
                             <p class="resultado-solicitud-msg">La solicitud ha sido creada y almacenada en su bandeja.</p>
                         </div>
-                        <div class="resultado-fixed-item">
+                        <div class="resultado-fixed-item resultado-fixed-resultado-only">
                             <span class="resultado-label">Tipo de documento</span>
                             <p class="resultado-fixed-value" id="resTipoDoc">DNI</p>
                         </div>
-                        <div class="resultado-fixed-item">
+                        <div class="resultado-fixed-item resultado-fixed-resultado-only">
                             <span class="resultado-label">N° de documento</span>
                             <p class="resultado-fixed-value" id="resNroDoc">00000000</p>
+                        </div>
+                        <div class="resultado-fixed-item resultado-fixed-calculo-only">
+                            <span class="resultado-label">Capacidad máxima</span>
+                            <p class="resultado-fixed-value" id="resFixedCapacidadMaxima">S/ 0.00</p>
+                        </div>
+                        <div class="resultado-fixed-item resultado-fixed-calculo-only">
+                            <span class="resultado-label">Inicial mínima</span>
+                            <p class="resultado-fixed-value" id="resFixedInicialMinima">10%</p>
+                        </div>
+                        <div class="resultado-fixed-item resultado-fixed-calculo-only">
+                            <span class="resultado-label">Segmento</span>
+                            <p class="resultado-fixed-value" id="resFixedSegmento">REGULAR</p>
                         </div>
                         <div class="resultado-fixed-item resultado-fixed-date">
                             <span class="material-icons-outlined resultado-fecha-icon">calendar_today</span>
@@ -259,7 +271,7 @@
                     <span class="resultado-monto-label">Monto preaprobado</span>
                     <h2 class="resultado-monto-value" id="resMontoPreaprobado">S/ 300,000.00</h2>
                     <div class="resultado-monto-details">
-                        <span>Cuota inicial mínima: <strong>10%</strong></span>
+                        <span>Cuota inicial mínima: <strong id="resInicialMinimaPorcentaje">10%</strong></span>
                         <span class="resultado-monto-separator">|</span>
                         <span>Plazo máximo: <strong>60 meses</strong></span>
                     </div>
