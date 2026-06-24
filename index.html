@@ -1339,6 +1339,13 @@
                                 <input type="text" class="input-bandeja" id="searchSolId" placeholder="Ej. EFE001">
                             </div>
                             <div class="form-group-bandeja">
+                                <label class="label-bandeja">TIPO DOC.</label>
+                                <select class="select-bandeja" id="searchTipoDoc">
+                                    <option value="" selected>Seleccionar</option>
+                                    <option value="DNI">DNI</option>
+                                </select>
+                            </div>
+                            <div class="form-group-bandeja">
                                 <label class="label-bandeja">N° DOCUMENTO</label>
                                 <input type="text" class="input-bandeja" id="searchDocNum" placeholder="Ej. 12345678">
                             </div>
@@ -1362,6 +1369,18 @@
                                 </select>
                             </div>
                             <div class="form-group-bandeja">
+                                <label class="label-bandeja">ETAPA</label>
+                                <select class="select-bandeja" id="searchEtapa">
+                                    <option value="" selected>Seleccionar</option>
+                                    <option value="SIMULACIÓN">SIMULACIÓN</option>
+                                    <option value="SOLICITUD">SOLICITUD</option>
+                                    <option value="RIESGOS">RIESGOS</option>
+                                    <option value="DOCUMENTARIA">DOCUMENTARIA</option>
+                                    <option value="FIRMA">FIRMA</option>
+                                    <option value="OPERACIONES">OPERACIONES</option>
+                                </select>
+                            </div>
+                            <div class="form-group-bandeja">
                                 <label class="label-bandeja">ESTADO</label>
                                 <select class="select-bandeja" id="searchEstado">
                                     <option value="" selected>Seleccionar</option>
@@ -1370,7 +1389,6 @@
                                     <option value="OBSERVADO">OBSERVADO</option>
                                     <option value="RECHAZADO">RECHAZADO</option>
                                     <option value="ACTIVADO">ACTIVADO</option>
-                                    <option value="EXITOSO">EXITOSO</option>
                                 </select>
                             </div>
                             <div class="form-group-bandeja">
@@ -1389,7 +1407,6 @@
                             </div>
                             <div class="search-actions-bandeja">
                                 <button type="button" class="btn-bandeja btn-limpiar-bandeja" id="btnLimpiarBandeja">Limpiar</button>
-                                <button type="button" class="btn-bandeja btn-buscar-bandeja" id="btnBuscarBandeja">Buscar</button>
                             </div>
                         </div>
                     </div>
@@ -1399,10 +1416,10 @@
                         <div class="table-card-header-bandeja">
                             <div>
                                 <h3 class="table-card-title-bandeja">Solicitudes</h3>
-                                <p class="table-card-subtitle-bandeja" id="bandejaSubResults">9 resultados</p>
+                                <p class="table-card-subtitle-bandeja" id="bandejaSubResults">6 resultados</p>
                             </div>
                             <div class="table-card-total-bandeja">
-                                <span class="blue-dot"></span> TOTAL <span id="bandejaTotalCount">9</span>
+                                <span class="blue-dot"></span> TOTAL <span id="bandejaTotalCount">6</span>
                             </div>
                         </div>
 
@@ -1412,7 +1429,8 @@
                                 <thead>
                                     <tr>
                                         <th class="sortable" data-sort="id">SOLICITUD <span class="sort-icon-bandeja">⁝</span></th>
-                                        <th class="sortable" data-sort="documento">N° DOCUMENTO <span class="sort-icon-bandeja">⁝</span></th>
+                                        <th class="sortable" data-sort="tipoDoc">TIPO DOC <span class="sort-icon-bandeja">⁝</span></th>
+                                        <th class="sortable" data-sort="numeroDocumento">N° DOCUMENTO <span class="sort-icon-bandeja">⁝</span></th>
                                         <th class="sortable" data-sort="concesionario">CONCESIONARIO <span class="sort-icon-bandeja">⁝</span></th>
                                         <th class="sortable" data-sort="tienda">TIENDA <span class="sort-icon-bandeja">⁝</span></th>
                                         <th class="sortable" data-sort="fecha">FECHA RECEPCIÓN <span class="sort-icon-bandeja">⁝</span></th>
@@ -1540,6 +1558,12 @@
                                         <label class="form-label">N° de motor <span class="required">*</span></label>
                                         <input class="form-control" id="docGarantiaMotor" data-garantia-required="true" type="text" placeholder="Ingrese N° motor">
                                     </div>
+                                    <div class="form-group documentaria-span-2 garantia-contract-actions" id="docGarantiaContratoActions" hidden>
+                                        <button type="button" class="btn-generar-contrato" id="btnGenerarContratoGarantia">
+                                            <span class="material-icons-outlined">article</span>
+                                            <span>Generar contrato</span>
+                                        </button>
+                                    </div>
                                 </div>
                             </div>
 
@@ -1564,37 +1588,95 @@
                                     </div>
                                 </div>
                             </div>
-
-                            <div class="documentaria-card documentaria-tab-panel" id="docTabCliente">
+                            <div class="documentaria-card documentaria-tab-panel documentaria-client-card" id="docTabCliente">
                                 <h3>DATOS DE CLIENTE</h3>
-                                <div class="documentaria-form-grid">
+                                <div class="documentaria-client-grid">
                                     <div class="form-group">
-                                        <label class="form-label">Cliente</label>
-                                        <input class="form-control doc-control" id="docClienteNombre" type="text" value="Juan Julio Ramirez Gonzales" readonly>
+                                        <label class="form-label" for="docClienteTipoDoc">Tipo de documento</label>
+                                        <input class="form-control doc-locked-field" id="docClienteTipoDoc" type="text" value="DNI" readonly>
                                     </div>
                                     <div class="form-group">
-                                        <label class="form-label">Tipo Doc</label>
-                                        <input class="form-control doc-control" type="text" value="DNI" readonly>
+                                        <label class="form-label" for="docClienteNumero">Número documento</label>
+                                        <input class="form-control doc-locked-field" id="docClienteNumero" type="text" value="71865987" readonly>
                                     </div>
                                     <div class="form-group">
-                                        <label class="form-label">N° Doc</label>
-                                        <input class="form-control doc-control" id="docClienteNumero" type="text" value="71865987" readonly>
+                                        <label class="form-label" for="docClienteNombres">Nombres</label>
+                                        <input class="form-control" id="docClienteNombres" type="text" value="Juan" readonly>
                                     </div>
                                     <div class="form-group">
-                                        <label class="form-label">Dirección</label>
-                                        <input class="form-control doc-control" type="text" value="Calle Las Moras 123 - SMP" readonly>
+                                        <label class="form-label" for="docClienteApePaterno">Apellido paterno</label>
+                                        <input class="form-control" id="docClienteApePaterno" type="text" value="Pérez" readonly>
                                     </div>
                                     <div class="form-group">
-                                        <label class="form-label">Teléfono</label>
-                                        <input class="form-control doc-control" id="docClienteTelefono" type="text" value="928775998" readonly>
+                                        <label class="form-label" for="docClienteApeMaterno">Apellido materno</label>
+                                        <input class="form-control" id="docClienteApeMaterno" type="text" value="García" readonly>
                                     </div>
                                     <div class="form-group">
-                                        <label class="form-label">Fecha de nacimiento</label>
-                                        <input class="form-control doc-control" type="text" value="12/04/1992" readonly>
+                                        <label class="form-label" for="docClienteFechaNacimiento">Fecha de nacimiento</label>
+                                        <input class="form-control" id="docClienteFechaNacimiento" type="text" value="11/05/1995" readonly>
                                     </div>
-                                    <div class="form-group documentaria-span-2">
-                                        <label class="form-label">Estado civil</label>
-                                        <input class="form-control doc-control" type="text" value="Casado" readonly>
+                                    <div class="form-group">
+                                        <label class="form-label" for="docClienteTelefono">Número de celular <span class="required">*</span></label>
+                                        <input class="form-control" id="docClienteTelefono" type="text" value="922159933" readonly>
+                                        <span class="form-hint">El número ingresado se enviará la URL de políticas de privacidad.</span>
+                                    </div>
+                                    <div class="form-group">
+                                        <label class="form-label" for="docClienteCorreo">Correo electrónico <span class="required">*</span></label>
+                                        <input class="form-control" id="docClienteCorreo" type="text" value="juan.perez@email.com" readonly>
+                                    </div>
+                                    <div class="form-group">
+                                        <label class="form-label" for="docClienteSexo">Sexo</label>
+                                        <select class="form-control" id="docClienteSexo" disabled>
+                                            <option value="Masculino" selected>Masculino</option>
+                                            <option value="Femenino">Femenino</option>
+                                        </select>
+                                    </div>
+                                    <div class="form-group documentaria-client-span-2">
+                                        <label class="form-label" for="docClienteNacionalidad">Nacionalidad</label>
+                                        <input class="form-control" id="docClienteNacionalidad" type="text" value="Peruana" readonly>
+                                    </div>
+                                    <div class="form-group">
+                                        <label class="form-label" for="docClienteResidencia">Residencia</label>
+                                        <input class="form-control" id="docClienteResidencia" type="text" value="Perú" readonly>
+                                    </div>
+                                    <div class="form-group documentaria-client-span-4">
+                                        <label class="form-label" for="docClienteDireccion">Dirección de domicilio <span class="required">*</span></label>
+                                        <input class="form-control" id="docClienteDireccion" type="text" value="Av. Las Palmeras 123, San Miguel" readonly>
+                                    </div>
+                                    <div class="form-group">
+                                        <label class="form-label" for="docClienteDepartamento">Departamento <span class="required">*</span></label>
+                                        <select class="form-control" id="docClienteDepartamento" disabled>
+                                            <option value="Lima" selected>Lima</option>
+                                        </select>
+                                    </div>
+                                    <div class="form-group">
+                                        <label class="form-label" for="docClienteProvincia">Provincia <span class="required">*</span></label>
+                                        <select class="form-control" id="docClienteProvincia" disabled>
+                                            <option value="Lima" selected>Lima</option>
+                                        </select>
+                                    </div>
+                                    <div class="form-group">
+                                        <label class="form-label" for="docClienteDistrito">Distrito <span class="required">*</span></label>
+                                        <select class="form-control" id="docClienteDistrito" disabled>
+                                            <option value="San Miguel" selected>San Miguel</option>
+                                            <option value="La Molina">La Molina</option>
+                                            <option value="Santiago de Surco">Santiago de Surco</option>
+                                        </select>
+                                    </div>
+                                    <div class="form-group">
+                                        <label class="form-label" for="docClienteEstadoCivil">Estado civil <span class="required">*</span></label>
+                                        <select class="form-control" id="docClienteEstadoCivil" disabled>
+                                            <option value="Soltero">Soltero</option>
+                                            <option value="Casado" selected>Casado</option>
+                                            <option value="Conviviente">Conviviente</option>
+                                        </select>
+                                    </div>
+                                    <div class="form-group">
+                                        <label class="form-label" for="docClienteSeparacionBienes">Separación de bienes</label>
+                                        <select class="form-control doc-locked-field" id="docClienteSeparacionBienes" disabled>
+                                            <option value="No" selected>No</option>
+                                            <option value="Si">Sí</option>
+                                        </select>
                                     </div>
                                 </div>
                             </div>

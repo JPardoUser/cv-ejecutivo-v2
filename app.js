@@ -33,13 +33,14 @@ document.addEventListener('DOMContentLoaded', () => {
     // Bandeja Redesigned
     const searchSolId = document.getElementById('searchSolId');
     const searchDocNum = document.getElementById('searchDocNum');
+    const searchTipoDoc = document.getElementById('searchTipoDoc');
     const searchConcesionario = document.getElementById('searchConcesionario');
     const searchTienda = document.getElementById('searchTienda');
+    const searchEtapa = document.getElementById('searchEtapa');
     const searchEstado = document.getElementById('searchEstado');
     const searchFechaDesde = document.getElementById('searchFechaDesde');
     const searchFechaHasta = document.getElementById('searchFechaHasta');
     const btnLimpiarBandeja = document.getElementById('btnLimpiarBandeja');
-    const btnBuscarBandeja = document.getElementById('btnBuscarBandeja');
     const tablaBandejaNewBody = document.getElementById('tablaBandejaNewBody');
     const btnBandejaMenu = document.getElementById('btnBandejaMenu');
 
@@ -68,17 +69,16 @@ document.addEventListener('DOMContentLoaded', () => {
     const ETAPAS_SOLICITUD_NAV = [
         { key: 'SIMULACION', order: '01', label: 'SIMULACIÓN' },
         { key: 'SOLICITUD', order: '02', label: 'SOLICITUD' },
-        { key: 'RIESGOS', order: '03', label: 'RIESGOS' },
-        { key: 'DOCUMENTARIA', order: '04', label: 'DOCUMENTARIA' },
-        { key: 'FIRMA', order: '05', label: 'FIRMA' },
-        { key: 'OPERACIONES', order: '06', label: 'OPERACIONES' }
+        { key: 'DOCUMENTARIA', order: '03', label: 'DOCUMENTARIA' }
     ];
 
     function getEtapaNavigationKey(etapa) {
         const etapaNormalizada = normalizarEtapa(etapa || 'SIMULACIÓN');
         if (etapaNormalizada === 'SIMULACION') return 'SIMULACION';
-        if (etapaNormalizada === 'FIRMAS') return 'FIRMA';
-        if (etapaNormalizada === 'ACTIVACION' || etapaNormalizada === 'ACTIVADO') return 'OPERACIONES';
+        if (etapaNormalizada === 'SOLICITUD' || etapaNormalizada === 'RIESGOS') return 'SOLICITUD';
+        if (['DOCUMENTARIA', 'FIRMA', 'FIRMAS', 'OPERACIONES', 'ACTIVACION', 'ACTIVADO'].includes(etapaNormalizada)) {
+            return 'DOCUMENTARIA';
+        }
         return etapaNormalizada;
     }
 
@@ -433,6 +433,64 @@ document.addEventListener('DOMContentLoaded', () => {
             etapa: 'RIESGOS',
             estado: 'OBSERVADO',
             telefono: '923456789',
+            cartera: 'FULL',
+            documentos: [
+                { id: 'POP003-CL1-001', name: 'DNI_cliente_POP003.pdf' },
+                { id: 'POP003-CL1-002', name: 'Sustento_ingresos_POP003.pdf' }
+            ],
+            chkManualDni: true,
+            chkManualRecibo: false,
+            chkManualCotizacion: true,
+            registroEditableData: {
+                ingresos: [
+                    { categoria: '5TA', perfil: 'FORMAL', situacion: 'DEPENDIENTE', fecha: '15/04/2021', ruc: '20123456789', monto: 'S/ 4,850.00', anualizado: 'NO' },
+                    { categoria: '4TA', perfil: 'FORMAL', situacion: 'INDEPENDIENTE', fecha: '01/02/2024', ruc: '20604578912', monto: 'S/ 1,350.00', anualizado: 'NO' }
+                ],
+                vehiculo: {
+                    regVehEstado: 'Nuevo',
+                    regVehConcesionario: 'Hyundai',
+                    regVehTienda: 'La Molina',
+                    regVehTipoDocVendedor: 'DNI',
+                    regVehNroDocVendedor: '45231890',
+                    regVehVendedor: 'ALOCHA',
+                    regVehMarca: 'Hyundai',
+                    regVehModelo: 'Tucson',
+                    regVehAnio: '2026',
+                    regVehTarjetaNombre: 'TITULAR'
+                },
+                credito: {
+                    regSimProducto: 'Credito Vehicular',
+                    regSimCampana: 'SUV Mayo 2026',
+                    regSimMoneda: 'Soles (S/.)',
+                    regSimTipoCambio: '3.78',
+                    regSimPrecioVeh: 'S/ 72,350.00',
+                    regSimCuotaInicial: 'S/ 12,000.00',
+                    regSimTea: '12.80%',
+                    regSimPlazo: '36 meses',
+                    regSimDiaPago: '05',
+                    regTotalFinanciamiento: 'S/ 60,350.00'
+                },
+                gastos: {
+                    regGastosNotariales: 'SI',
+                    regGastosRegistrales: 'SI',
+                    regGastosDelivery: 'NO',
+                    regPlanGpx: 'Premium',
+                    regGastosInclGpx: 'S/ 650.00',
+                    regKitMantenimiento: 'No',
+                    regCuotasDobles: 'No',
+                    regIncluirPortes: 'Si'
+                },
+                seguros: {
+                    regSegVehicular: 'Financiado',
+                    regSegVehCosto: 'S/ 1,850.00',
+                    regSegDesgravamen: 'SI',
+                    regSegDesgProd: 'Individual',
+                    regSegDesgCosto: 'S/ 0.00',
+                    regSegOptativo: 'No',
+                    regSegOptCosto: 'NO',
+                    regSegOptTipo: ''
+                }
+            },
             comentarioEjecutivo: {
                 ejecutivo: 'ALOCHA - Ejecutivo',
                 fechaHora: '18-05-2026 15:55:00',
@@ -470,19 +528,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 fechaHora: '18-05-2026 10:45:00',
                 comentario: 'La cuota resultante excede la capacidad permitida según ingreso estimado y endeudamiento vigente.'
             }
-        },
-        {
-            id: 'POP004',
-            cliente: 'Ramírez Castro José',
-            documento: 'DNI - 67890123',
-            tipoCredito: 'Crédito vehicular',
-            monto: 'S/ 58,600.00',
-            fecha: '17-05-2026 09:15:00',
-            concesionario: 'Kia',
-            tienda: 'Puruchuco',
-            etapa: 'ACTIVACIÓN',
-            estado: 'ACTIVADO',
-            telefono: '934567812'
         }
     ];
 
@@ -517,6 +562,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 downloadedPostAprobacionDocs: Array.isArray(solicitud.downloadedPostAprobacionDocs) ? solicitud.downloadedPostAprobacionDocs : [],
                 checklist2Docs: Array.isArray(solicitud.checklist2Docs) ? solicitud.checklist2Docs.map(doc => ({ id: doc.id, name: doc.name })) : [],
                 checklist2Comentario: solicitud.checklist2Comentario || '',
+                contratoGarantiaGenerado: !!solicitud.contratoGarantiaGenerado,
                 postAprobacionCollapsed: !!solicitud.postAprobacionCollapsed,
                 postAprobacionCompletionPopupShown: !!solicitud.postAprobacionCompletionPopupShown
             };
@@ -1355,6 +1401,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
         // Reset Checklist state & Read-Only state
         applyRegistrationFormReadOnlyState(false);
+        lockDatosClienteYConyugeRiesgosObservado(currentSol || { etapa: 'SOLICITUD', estado: 'PENDIENTE' });
+        lockEstadoVehiculoNuevo();
         attachedDocs = [];
         renderChecklistTable();
         actualizarChecklistPorCarretera(carreteraActual);
@@ -1945,6 +1993,8 @@ document.addEventListener('DOMContentLoaded', () => {
     const docPostAprobacionCard = document.getElementById('docPostAprobacionCard');
     const docPostAprobacionList = document.getElementById('docPostAprobacionList');
     const btnVerMasPostDocs = document.getElementById('btnVerMasPostDocs');
+    const docGarantiaContratoActions = document.getElementById('docGarantiaContratoActions');
+    const btnGenerarContratoGarantia = document.getElementById('btnGenerarContratoGarantia');
 
     const DOC_CHECKLIST2_MAX = 15;
     let docNameContext = null;
@@ -1956,6 +2006,7 @@ document.addEventListener('DOMContentLoaded', () => {
     let postAprobacionCompletionPopupShown = false;
     let currentDocumentariaSolicitud = null;
     let isChecklist2ReadOnly = false;
+    let contratoGarantiaGenerado = false;
     const downloadedPostAprobacionDocs = new Set();
 
     function escapeHtml(value) {
@@ -1987,6 +2038,85 @@ document.addEventListener('DOMContentLoaded', () => {
         const etapa = normalizarEtapa(solicitud?.etapa);
         const estado = normalizarEtapa(solicitud?.estado);
         return etapa === 'RIESGOS' && estado === 'OBSERVADO';
+    }
+
+    function isRiesgosObservadoEditableSolicitud(solicitud) {
+        return isRiesgosObservadoSolicitud(solicitud);
+    }
+
+    function isRiesgosConChecklistSolicitud(solicitud) {
+        const etapa = normalizarEtapa(solicitud?.etapa);
+        const estado = normalizarEtapa(solicitud?.estado);
+        return etapa === 'RIESGOS' && ['PENDIENTE', 'OBSERVADO', 'RECHAZADO'].includes(estado);
+    }
+
+    function ensureRiesgosChecklist1Inicial(solicitud) {
+        if (!isRiesgosConChecklistSolicitud(solicitud)) return;
+        if (!Array.isArray(solicitud.documentos) || solicitud.documentos.length === 0) {
+            solicitud.documentos = [
+                { id: `${solicitud.id || 'SOL'}-CL1-001`, name: `DNI_cliente_${solicitud.id || 'SOL'}.pdf` }
+            ];
+        }
+        if (typeof solicitud.chkManualDni !== 'boolean') solicitud.chkManualDni = true;
+    }
+
+    function setRegistroFieldLocked(field, locked) {
+        if (!field) return;
+        if (locked) {
+            if (field.dataset.riesgosObservedLock !== 'true') {
+                field.dataset.prevDisabledRiesgos = String(field.disabled);
+                field.dataset.prevReadonlyRiesgos = String(field.hasAttribute('readonly'));
+                field.dataset.prevDisabledClassRiesgos = String(field.classList.contains('disabled'));
+                field.dataset.riesgosObservedLock = 'true';
+            }
+            field.disabled = true;
+            field.classList.add('disabled', 'is-readonly');
+            if (field.tagName !== 'SELECT') field.setAttribute('readonly', 'readonly');
+            return;
+        }
+
+        if (field.dataset.riesgosObservedLock === 'true') {
+            field.disabled = field.dataset.prevDisabledRiesgos === 'true';
+            if (field.dataset.prevReadonlyRiesgos === 'true') {
+                field.setAttribute('readonly', 'readonly');
+            } else {
+                field.removeAttribute('readonly');
+            }
+            field.classList.toggle('disabled', field.dataset.prevDisabledClassRiesgos === 'true');
+            field.classList.remove('is-readonly');
+            delete field.dataset.riesgosObservedLock;
+            delete field.dataset.prevDisabledRiesgos;
+            delete field.dataset.prevReadonlyRiesgos;
+            delete field.dataset.prevDisabledClassRiesgos;
+        }
+    }
+
+    function lockEstadoVehiculoNuevo() {
+        const estadoVehiculo = document.getElementById('regVehEstado');
+        if (!estadoVehiculo) return;
+        estadoVehiculo.value = 'Nuevo';
+        estadoVehiculo.disabled = true;
+        estadoVehiculo.classList.add('disabled', 'is-readonly');
+        estadoVehiculo.setAttribute('aria-disabled', 'true');
+    }
+
+    function lockDatosClienteYConyugeRiesgosObservado(solicitud) {
+        const locked = isRiesgosObservadoEditableSolicitud(solicitud);
+
+        const datosClienteIds = [
+            'regTipoDoc', 'regNroDoc', 'regNombres', 'regApePaterno', 'regApeMaterno',
+            'regFechaNac', 'regCelular', 'regCorreo', 'regSexo', 'regNacionalidad',
+            'regResidencia', 'regDireccion', 'regDepartamento', 'regProvincia', 'regDistrito',
+            'regEstadoCivil', 'regSeparacionBienes', 'stickyRegTipoDoc', 'stickyRegNroDoc',
+            'stickyRegNombres', 'stickyRegApePaterno'
+        ];
+
+        const datosConyugeIds = [
+            'regConTipoDoc', 'regConNroDoc', 'regConApePaterno', 'regConApeMaterno',
+            'regConFechaNac', 'regConNacionalidad'
+        ];
+
+        [...datosClienteIds, ...datosConyugeIds].forEach(id => setRegistroFieldLocked(document.getElementById(id), locked));
     }
 
     function isOperacionesRespuestaPermitida(solicitud) {
@@ -2129,8 +2259,15 @@ document.addEventListener('DOMContentLoaded', () => {
         const estado = normalizarEtapa(solicitud.estado);
         const etapa = normalizarEtapa(solicitud.etapa);
         const riesgosDecision = solicitud.riesgosDecision || solicitud.riesgosObservacion;
-        if (includeRiesgos && etapa === 'RIESGOS' && ['OBSERVADO', 'RECHAZADO'].includes(estado) && riesgosDecision) {
-            bloques.push(formatearDecisionAnalista(riesgosDecision, 'riesgos', solicitud.estado));
+        if (debeMostrarHistorialRiesgos(solicitud, includeRiesgos, riesgosDecision)) {
+            if (riesgosDecision) bloques.push(formatearDecisionAnalista(riesgosDecision, 'riesgos', solicitud.estado));
+            const respuestasRiesgos = getRespuestasEjecutivoCards(solicitud, 'riesgos').map(card => [
+                card.titulo,
+                `Ejecutivo: ${card.detalles?.find(item => item.label === 'Ejecutivo')?.value || '-'}`,
+                `Fecha y hora: ${card.detalles?.find(item => item.label === 'Fecha y hora')?.value || '-'}`,
+                `${card.comentarioLabel || 'Comentario'}: ${card.comentario || '-'}`
+            ].join('\n'));
+            bloques.push(...respuestasRiesgos);
         }
 
         if (includeOperaciones && isOperacionesObservadoSolicitud(solicitud)) {
@@ -2207,10 +2344,28 @@ document.addEventListener('DOMContentLoaded', () => {
         };
     }
 
+    function tieneRespuestasEjecutivo(solicitud, origen) {
+        const origenNormalizado = origen === 'operaciones' ? 'operaciones' : 'riesgos';
+        return (Array.isArray(solicitud?.respuestasEjecutivo) ? solicitud.respuestasEjecutivo : [])
+            .some(resp => (resp.origen || 'riesgos') === origenNormalizado && String(resp.comentario || '').trim());
+    }
+
+    function debeMostrarHistorialRiesgos(solicitud, includeRiesgos, riesgosDecision) {
+        if (!includeRiesgos || !solicitud) return false;
+        const etapa = normalizarEtapa(solicitud.etapa);
+        const estado = normalizarEtapa(solicitud.estado);
+        return etapa === 'RIESGOS'
+            && (
+                ['OBSERVADO', 'RECHAZADO'].includes(estado)
+                || !!riesgosDecision
+                || tieneRespuestasEjecutivo(solicitud, 'riesgos')
+            );
+    }
+
     function getRespuestasEjecutivoCards(solicitud, origen) {
         const origenNormalizado = origen === 'operaciones' ? 'operaciones' : 'riesgos';
         return (Array.isArray(solicitud?.respuestasEjecutivo) ? solicitud.respuestasEjecutivo : [])
-            .filter(resp => (resp.origen || 'riesgos') === origenNormalizado && resp.comentario)
+            .filter(resp => (resp.origen || 'riesgos') === origenNormalizado && String(resp.comentario || '').trim())
             .map(resp => ({
                 tipo: 'ejecutivo-respuesta',
                 titulo: origenNormalizado === 'operaciones'
@@ -2237,7 +2392,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const estado = normalizarEtapa(solicitud.estado);
         const etapa = normalizarEtapa(solicitud.etapa);
         const riesgosDecision = solicitud.riesgosDecision || solicitud.riesgosObservacion;
-        if (includeRiesgos && etapa === 'RIESGOS' && ['OBSERVADO', 'RECHAZADO'].includes(estado) && riesgosDecision) {
+        if (debeMostrarHistorialRiesgos(solicitud, includeRiesgos, riesgosDecision)) {
             const riesgosCard = getDecisionAnalistaCardData(riesgosDecision, 'riesgos', solicitud.estado);
             if (riesgosCard) cards.push(riesgosCard);
             cards.push(...getRespuestasEjecutivoCards(solicitud, 'riesgos'));
@@ -2305,7 +2460,8 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         if (regComentariosCards) {
-            if (isReadOnly) {
+            const mostrarComentariosDeRiesgos = isReadOnly || isRiesgosObservadoEditableSolicitud(solicitud);
+            if (mostrarComentariosDeRiesgos) {
                 renderComentarioCards(
                     regComentariosCards,
                     getComentariosSolicitudCards(solicitud, { includeRiesgos: true, includeOperaciones: false })
@@ -2356,7 +2512,7 @@ document.addEventListener('DOMContentLoaded', () => {
             btnPasarRiesgos.textContent = 'Pasar a Riesgos';
         } else if (btnPasarRiesgos && !isReadOnly) {
             btnPasarRiesgos.style.display = 'inline-flex';
-            btnPasarRiesgos.textContent = 'Pasar a Riesgos';
+            btnPasarRiesgos.textContent = isRiesgosObservadoEditableSolicitud(solicitud) ? 'Reenviar a Riesgos' : 'Pasar a Riesgos';
         }
     }
 
@@ -2557,6 +2713,7 @@ document.addEventListener('DOMContentLoaded', () => {
         currentDocumentariaSolicitud.checklist2Docs = docChecklist2Docs;
         currentDocumentariaSolicitud.checklist2Comentario = docChecklist2ComentarioValue;
         currentDocumentariaSolicitud.downloadedPostAprobacionDocs = Array.from(downloadedPostAprobacionDocs);
+        currentDocumentariaSolicitud.contratoGarantiaGenerado = contratoGarantiaGenerado;
         currentDocumentariaSolicitud.postAprobacionCollapsed = postAprobacionCollapsed;
         currentDocumentariaSolicitud.postAprobacionCompletionPopupShown = postAprobacionCompletionPopupShown;
         if (isOperacionesObservadoSolicitud(currentDocumentariaSolicitud)) {
@@ -2719,6 +2876,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
         actualizarEstadoDocumentariaResumen(currentDocumentariaSolicitud);
         renderStageNavigation('documentariaStageTabs', currentDocumentariaSolicitud.etapa || 'DOCUMENTARIA', currentDocumentariaSolicitud.estado || 'PENDIENTE', getEtapaNavigationKey(currentDocumentariaSolicitud.etapa || 'DOCUMENTARIA'));
+        updateGenerarContratoGarantiaButtonState();
     }
 
     function avanzarSolicitudEFE004AFirmaPendiente() {
@@ -3087,6 +3245,7 @@ document.addEventListener('DOMContentLoaded', () => {
         currentDocumentariaSolicitud.checklist2Docs = docChecklist2Docs;
         currentDocumentariaSolicitud.checklist2Comentario = docChecklist2ComentarioValue;
         currentDocumentariaSolicitud.downloadedPostAprobacionDocs = Array.from(downloadedPostAprobacionDocs);
+        currentDocumentariaSolicitud.contratoGarantiaGenerado = contratoGarantiaGenerado;
         currentDocumentariaSolicitud.etapa = 'OPERACIONES';
         currentDocumentariaSolicitud.estado = esRespuestaOperaciones ? currentDocumentariaSolicitud.estado : 'PENDIENTE';
         updateDocumentariaTitleAndStage();
@@ -3364,6 +3523,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function ejecutarEnvioARiesgos() {
+        saveCurrentRegistrationState();
         const celular = document.getElementById('regCelular').value.trim();
         const tipoDoc = document.getElementById('regTipoDoc').value;
         const nroDoc = document.getElementById('regNroDoc').value;
@@ -3391,6 +3551,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const solId = document.getElementById('regSolicitudId').textContent;
         const existingSol = solicitudes.find(s => s.id === solId);
         if (existingSol) {
+            const esReenvioPorObservacionRiesgos = isRiesgosObservadoSolicitud(existingSol);
             existingSol.fecha = fechaStr;
             existingSol.etapa = 'RIESGOS';
             existingSol.estado = 'PENDIENTE';
@@ -3401,12 +3562,24 @@ document.addEventListener('DOMContentLoaded', () => {
             existingSol.vendedorNroDoc = document.getElementById('regVehNroDocVendedor')?.value || existingSol.vendedorNroDoc;
             existingSol.vendedor = document.getElementById('regVehVendedor')?.value || existingSol.vendedor;
             existingSol.tipoCambio = document.getElementById('regSimTipoCambio')?.value || existingSol.tipoCambio;
+            existingSol.documentos = [...attachedDocs];
+            existingSol.chkManualDni = document.getElementById('chkManualDni')?.checked || false;
+            existingSol.chkManualRecibo = document.getElementById('chkManualRecibo')?.checked || false;
+            existingSol.chkManualCotizacion = document.getElementById('chkManualCotizacion')?.checked || false;
+            existingSol.registroEditableData = collectRegistroEditableData();
             existingSol.gastosRegistrales = document.getElementById('regGastosRegistrales')?.value || existingSol.gastosRegistrales;
             existingSol.gastosDelivery = document.getElementById('regGastosDelivery')?.value || existingSol.gastosDelivery;
             existingSol.seguroVehicular = document.getElementById('regSegVehicular')?.value || existingSol.seguroVehicular;
             existingSol.seguroDesgravamen = document.getElementById('regSegDesgravamen')?.value || existingSol.seguroDesgravamen;
             existingSol.tipoSeguroDesgravamen = document.getElementById('regSegDesgProd')?.value || existingSol.tipoSeguroDesgravamen;
-            registrarComentarioEjecutivoSolicitud(existingSol, comentarioRegistro, fechaStr);
+            if (esReenvioPorObservacionRiesgos) {
+                registrarRespuestaEjecutivoSolicitud(existingSol, 'riesgos', comentarioRegistro, fechaStr);
+                existingSol.respuestaRiesgosBorrador = '';
+                existingSol.riesgosRespuestaEnviada = true;
+                existingSol.riesgosRespuestaHabilitada = false;
+            } else {
+                registrarComentarioEjecutivoSolicitud(existingSol, comentarioRegistro, fechaStr);
+            }
             
             // Set the correct calculated amount from the form
             const precioVehStr = document.getElementById('regSimPrecioVeh').value;
@@ -3430,6 +3603,11 @@ document.addEventListener('DOMContentLoaded', () => {
                 vendedorNroDoc: document.getElementById('regVehNroDocVendedor')?.value || '',
                 vendedor: document.getElementById('regVehVendedor')?.value || 'ALOCHA',
                 tipoCambio: document.getElementById('regSimTipoCambio')?.value || getTipoCambioCalculoValue(),
+                documentos: [...attachedDocs],
+                chkManualDni: document.getElementById('chkManualDni')?.checked || false,
+                chkManualRecibo: document.getElementById('chkManualRecibo')?.checked || false,
+                chkManualCotizacion: document.getElementById('chkManualCotizacion')?.checked || false,
+                registroEditableData: collectRegistroEditableData(),
                 gastosRegistrales: document.getElementById('regGastosRegistrales')?.value || 'S/ 0.00',
                 gastosDelivery: document.getElementById('regGastosDelivery')?.value || 'S/ 0.00',
                 seguroVehicular: document.getElementById('regSegVehicular')?.value || getSeguroVehicularCalculoValue(),
@@ -3459,7 +3637,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // Pasar a Riesgos sin validación OTP
     document.getElementById('btnPasarRiesgos').addEventListener('click', () => {
         const solicitudActual = solicitudes.find(s => s.id === currentSolicitudId);
-        if (isRiesgosObservadoSolicitud(solicitudActual)) {
+        if (isRiesgosObservadoSolicitud(solicitudActual) && !isRiesgosObservadoEditableSolicitud(solicitudActual)) {
             enviarRespuestaARiesgos();
             return;
         }
@@ -3484,6 +3662,11 @@ document.addEventListener('DOMContentLoaded', () => {
         }
         if (!hasAttachedFile) {
             showToast('Debe adjuntar al menos un documento para poder continuar.', 'warning');
+            return;
+        }
+
+        if (isRiesgosObservadoEditableSolicitud(solicitudActual)) {
+            ejecutarEnvioARiesgos();
             return;
         }
 
@@ -3543,7 +3726,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // ========================================
     // BANDEJA DE ENTRADA REDESIGNED — Table & Search
     // ========================================
-    let currentSortColumn = null;
+    let currentSortColumn = 'fecha';
     let currentSortAscending = true;
     let currentPage = 1;
     const itemsPerPage = 10;
@@ -3579,6 +3762,14 @@ document.addEventListener('DOMContentLoaded', () => {
         searchFechaHasta.addEventListener('input', formatBandejaDateInput);
     }
 
+    function getSolicitudDocumentoParts(documento) {
+        const parts = String(documento || '').split(' - ');
+        return {
+            tipoDoc: (parts[0] || '').trim(),
+            numeroDocumento: (parts[1] || '').trim()
+        };
+    }
+
     function getEstadoLabel(estado) {
         const estadoNormalizado = String(estado || '').trim().toUpperCase();
         return estadoNormalizado === 'EN PROCESO' ? 'En proceso' : estadoNormalizado;
@@ -3596,7 +3787,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (data.length === 0) {
             tablaBandejaNewBody.innerHTML = `
                 <tr>
-                    <td colspan="8" style="text-align: center; padding: 40px; color: var(--text-muted);">
+                    <td colspan="9" style="text-align: center; padding: 40px; color: var(--text-muted);">
                         <span class="material-icons-outlined" style="font-size: 48px; display: block; margin-bottom: 8px;">inbox</span>
                         No se encontraron solicitudes
                     </td>
@@ -3618,6 +3809,11 @@ document.addEventListener('DOMContentLoaded', () => {
             data.sort((a, b) => {
                 let valA = a[currentSortColumn] || '';
                 let valB = b[currentSortColumn] || '';
+
+                if (currentSortColumn === 'tipoDoc' || currentSortColumn === 'numeroDocumento') {
+                    valA = getSolicitudDocumentoParts(a.documento)[currentSortColumn] || '';
+                    valB = getSolicitudDocumentoParts(b.documento)[currentSortColumn] || '';
+                }
 
                 if (currentSortColumn === 'fecha') {
                     const parseDate = (dStr) => {
@@ -3649,9 +3845,11 @@ document.addEventListener('DOMContentLoaded', () => {
 
         pageData.forEach(sol => {
             const row = document.createElement('tr');
+            const documentoParts = getSolicitudDocumentoParts(sol.documento);
             row.innerHTML = `
                 <td><strong style="color: var(--primary-blue); font-weight: 700;">${sol.id}</strong></td>
-                <td>${sol.documento}</td>
+                <td>${documentoParts.tipoDoc}</td>
+                <td>${documentoParts.numeroDocumento}</td>
                 <td>${sol.concesionario}</td>
                 <td>${sol.tienda}</td>
                 <td>${sol.fecha}</td>
@@ -3770,9 +3968,11 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function applyBandejaFilters() {
         const solId = document.getElementById('searchSolId').value.toLowerCase().trim();
+        const tipoDocVal = document.getElementById('searchTipoDoc')?.value || '';
         const docNum = document.getElementById('searchDocNum').value.toLowerCase().trim();
         const concessionsVal = document.getElementById('searchConcesionario').value;
         const tiendaVal = document.getElementById('searchTienda').value;
+        const etapaVal = document.getElementById('searchEtapa')?.value || '';
         const estadoVal = document.getElementById('searchEstado').value;
         const fechaDesdeVal = document.getElementById('searchFechaDesde').value.trim();
         const fechaHastaVal = document.getElementById('searchFechaHasta').value.trim();
@@ -3785,14 +3985,20 @@ document.addEventListener('DOMContentLoaded', () => {
         if (solId) {
             filtered = filtered.filter(sol => sol.id.toLowerCase().includes(solId));
         }
+        if (tipoDocVal) {
+            filtered = filtered.filter(sol => getSolicitudDocumentoParts(sol.documento).tipoDoc === tipoDocVal);
+        }
         if (docNum) {
-            filtered = filtered.filter(sol => sol.documento.toLowerCase().includes(docNum));
+            filtered = filtered.filter(sol => getSolicitudDocumentoParts(sol.documento).numeroDocumento.toLowerCase().includes(docNum));
         }
         if (concessionsVal) {
             filtered = filtered.filter(sol => sol.concesionario === concessionsVal);
         }
         if (tiendaVal) {
             filtered = filtered.filter(sol => sol.tienda === tiendaVal);
+        }
+        if (etapaVal) {
+            filtered = filtered.filter(sol => sol.etapa === etapaVal);
         }
         if (estadoVal) {
             filtered = filtered.filter(sol => sol.estado === estadoVal);
@@ -3819,20 +4025,31 @@ document.addEventListener('DOMContentLoaded', () => {
         renderBandejaNewTable(filteredBandejaData);
     }
 
-    // Button event listeners
-    if (btnBuscarBandeja) {
-        btnBuscarBandeja.addEventListener('click', () => {
-            currentPage = 1; // Reset to page 1 on new search
+    // Filtros automáticos: se ejecutan al ingresar datos o seleccionar desplegables
+    [searchSolId, searchDocNum, searchFechaDesde, searchFechaHasta].forEach(input => {
+        if (!input) return;
+        input.addEventListener('input', () => {
+            currentPage = 1;
             applyBandejaFilters();
         });
-    }
+    });
+
+    [searchTipoDoc, searchConcesionario, searchTienda, searchEtapa, searchEstado].forEach(select => {
+        if (!select) return;
+        select.addEventListener('change', () => {
+            currentPage = 1;
+            applyBandejaFilters();
+        });
+    });
 
     if (btnLimpiarBandeja) {
         btnLimpiarBandeja.addEventListener('click', () => {
             document.getElementById('searchSolId').value = '';
+            document.getElementById('searchTipoDoc').value = '';
             document.getElementById('searchDocNum').value = '';
             document.getElementById('searchConcesionario').value = '';
             document.getElementById('searchTienda').value = '';
+            document.getElementById('searchEtapa').value = '';
             document.getElementById('searchEstado').value = '';
             document.getElementById('searchFechaDesde').value = '';
             document.getElementById('searchFechaHasta').value = '';
@@ -3997,6 +4214,154 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
+
+    const REGISTRO_EDITABLE_SECTION_FIELDS = {
+        vehiculo: [
+            'regVehEstado', 'regVehConcesionario', 'regVehTienda', 'regVehTipoDocVendedor',
+            'regVehNroDocVendedor', 'regVehVendedor', 'regVehMarca', 'regVehModelo', 'regVehAnio',
+            'regVehTarjetaNombre', 'regVehTerceroTipoDoc', 'regVehTerceroNumero', 'regVehTerceroNombres',
+            'regVehTerceroApePaterno', 'regVehTerceroApeMaterno'
+        ],
+        credito: [
+            'regSimProducto', 'regSimCampana', 'regSimMoneda', 'regSimTipoCambio', 'regSimPrecioVeh',
+            'regSimCuotaInicial', 'regSimTea', 'regSimPlazo', 'regSimDiaPago', 'regTotalFinanciamiento'
+        ],
+        gastos: [
+            'regGastosNotariales', 'regGastosRegistrales', 'regGastosDelivery', 'regPlanGpx',
+            'regGastosInclGpx', 'regKitMantenimiento', 'regCuotasDobles', 'regIncluirPortes'
+        ],
+        seguros: [
+            'regSegVehicular', 'regSegVehCosto', 'regSegDesgravamen', 'regSegDesgProd', 'regSegDesgCosto',
+            'regSegOptativo', 'regSegOptCosto', 'regSegOptTipo'
+        ]
+    };
+
+    function setRegistroFieldValue(id, value) {
+        const field = document.getElementById(id);
+        if (!field || value === undefined || value === null) return;
+        if (field.tagName === 'SELECT') {
+            const valueText = String(value);
+            const hasOption = Array.from(field.options).some(option => option.value === valueText);
+            if (!hasOption && valueText) {
+                field.add(new Option(valueText, valueText));
+            }
+            field.value = valueText;
+        } else {
+            field.value = value;
+        }
+    }
+
+    function getRegistroFieldValues(fieldIds) {
+        return fieldIds.reduce((data, id) => {
+            const field = document.getElementById(id);
+            if (field) data[id] = field.value;
+            return data;
+        }, {});
+    }
+
+    function setRegistroFieldValues(data = {}) {
+        Object.entries(data).forEach(([id, value]) => setRegistroFieldValue(id, value));
+    }
+
+    function collectIngresosData() {
+        return Array.from(document.querySelectorAll('#ingresosList .ingreso-item')).map(item => ({
+            categoria: item.querySelector('.ingreso-categoria')?.value || '',
+            perfil: item.querySelector('.ingreso-perfil')?.value || '',
+            situacion: item.querySelector('.ingreso-situacion')?.value || '',
+            fecha: item.querySelector('.ingreso-fecha')?.value || '',
+            ruc: item.querySelector('.ingreso-ruc')?.value || '',
+            monto: item.querySelector('.ingreso-monto')?.value || 'S/ 0.00',
+            anualizado: item.querySelector('.ingreso-anualizado')?.value || 'NO'
+        }));
+    }
+
+    function setIngresoItemData(item, data = {}) {
+        const setValue = (selector, value) => {
+            const field = item.querySelector(selector);
+            if (!field) return;
+            field.value = value ?? '';
+        };
+        setValue('.ingreso-categoria', data.categoria || '');
+        setValue('.ingreso-perfil', data.perfil || '');
+        setValue('.ingreso-situacion', data.situacion || '');
+        setValue('.ingreso-fecha', data.fecha || '');
+        setValue('.ingreso-ruc', data.ruc || '');
+        setValue('.ingreso-monto', data.monto || 'S/ 0.00');
+        setValue('.ingreso-anualizado', data.anualizado || 'NO');
+    }
+
+    function applyIngresosData(ingresos = []) {
+        const list = document.getElementById('ingresosList');
+        if (!list) return;
+        resetIngresosSection();
+        const dataList = Array.isArray(ingresos) && ingresos.length ? ingresos : [];
+        dataList.forEach((data, index) => {
+            let item = list.querySelectorAll('.ingreso-item')[index];
+            if (!item && index > 0) {
+                item = createIngresoItem(index + 1);
+                if (item) list.appendChild(item);
+            }
+            if (item) setIngresoItemData(item, data);
+        });
+        refreshIngresoLabels();
+        updateTotalIngresos();
+    }
+
+    function collectRegistroEditableData() {
+        return {
+            ingresos: collectIngresosData(),
+            vehiculo: getRegistroFieldValues(REGISTRO_EDITABLE_SECTION_FIELDS.vehiculo),
+            credito: getRegistroFieldValues(REGISTRO_EDITABLE_SECTION_FIELDS.credito),
+            gastos: getRegistroFieldValues(REGISTRO_EDITABLE_SECTION_FIELDS.gastos),
+            seguros: getRegistroFieldValues(REGISTRO_EDITABLE_SECTION_FIELDS.seguros)
+        };
+    }
+
+    function applyRegistroEditableData(solicitud) {
+        const data = solicitud?.registroEditableData;
+        if (!data) return;
+        if (Array.isArray(data.ingresos)) applyIngresosData(data.ingresos);
+        setRegistroFieldValues(data.vehiculo || {});
+        actualizarDatosTerceroPropiedad(false);
+        setRegistroFieldValues(data.credito || {});
+        setRegistroFieldValues(data.gastos || {});
+        setRegistroFieldValues(data.seguros || {});
+        updateTipoSeguroDesgravamenSolicitudVisibility();
+        updateTotalIngresos();
+    }
+
+    function enableObservedEditableControls(solicitud) {
+        if (!isRiesgosObservadoEditableSolicitud(solicitud)) return;
+        document.querySelectorAll('#ingresosCard input, #ingresosCard select').forEach(control => {
+            control.disabled = false;
+        });
+        Object.values(REGISTRO_EDITABLE_SECTION_FIELDS).flat().forEach(id => {
+            const control = document.getElementById(id);
+            if (!control) return;
+            control.disabled = false;
+            control.readOnly = false;
+            control.removeAttribute('readonly');
+            control.classList.remove('disabled');
+        });
+        ['chkManualDni', 'chkManualRecibo', 'chkManualCotizacion'].forEach(id => {
+            const checkbox = document.getElementById(id);
+            if (checkbox) checkbox.disabled = false;
+        });
+        const tarjetaNombre = document.getElementById('regVehTarjetaNombre');
+        if (tarjetaNombre && tarjetaNombre.value !== 'TERCERO') {
+            terceroPropiedadFields.forEach(fieldId => {
+                const field = document.getElementById(fieldId);
+                if (field) field.disabled = true;
+            });
+        }
+        lockEstadoVehiculoNuevo();
+        const btnPasarRiesgos = document.getElementById('btnPasarRiesgos');
+        if (btnPasarRiesgos) {
+            btnPasarRiesgos.style.display = 'inline-flex';
+            btnPasarRiesgos.textContent = 'Reenviar a Riesgos';
+        }
+    }
+
     // ============================
     // REGISTRATION FORM READ-ONLY & STATE PERSISTENCE
     // ============================
@@ -4007,12 +4372,17 @@ document.addEventListener('DOMContentLoaded', () => {
                 currentSol.documentos = [...attachedDocs];
                 if (!isSolicitudReadOnly) {
                     const comentarioEditable = document.getElementById('regComentarios')?.value || '';
-                    currentSol.comentarios = comentarioEditable;
-                    currentSol.comentariosBorrador = comentarioEditable;
+                    if (isRiesgosObservadoEditableSolicitud(currentSol)) {
+                        currentSol.respuestaRiesgosBorrador = comentarioEditable;
+                    } else {
+                        currentSol.comentarios = comentarioEditable;
+                        currentSol.comentariosBorrador = comentarioEditable;
+                    }
                 }
                 currentSol.chkManualDni = document.getElementById('chkManualDni')?.checked || false;
                 currentSol.chkManualRecibo = document.getElementById('chkManualRecibo')?.checked || false;
                 currentSol.chkManualCotizacion = document.getElementById('chkManualCotizacion')?.checked || false;
+                currentSol.registroEditableData = collectRegistroEditableData();
                 currentSol.cartera = normalizarCarretera(document.getElementById('regCartera')?.textContent || currentSol.cartera || 'EXPRESS');
                 const celular = document.getElementById('regCelular').value.trim();
                 if (celular) currentSol.telefono = celular;
@@ -4084,6 +4454,7 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         });
         actualizarDatosTerceroPropiedad(false);
+        lockEstadoVehiculoNuevo();
     }
 
     // ============================
@@ -4147,7 +4518,8 @@ document.addEventListener('DOMContentLoaded', () => {
             showBandejaDocumentaria(solicitud);
 
         } else if (solicitud.etapa === 'SOLICITUD' || solicitud.etapa === 'RIESGOS') {
-            const isReadOnly = (solicitud.etapa === 'RIESGOS');
+            ensureRiesgosChecklist1Inicial(solicitud);
+            const isReadOnly = (normalizarEtapa(solicitud.etapa) === 'RIESGOS' && !isRiesgosObservadoEditableSolicitud(solicitud));
 
             // Set read-only state for registration page elements
             applyRegistrationFormReadOnlyState(isReadOnly);
@@ -4251,15 +4623,28 @@ document.addEventListener('DOMContentLoaded', () => {
             document.getElementById('regSegOptCosto').value = "NO";
             document.getElementById('regSegOptTipo').value = "";
 
+            applyRegistroEditableData(solicitud);
+            enableObservedEditableControls(solicitud);
+
             // Load Checklist state
             attachedDocs = solicitud.documentos ? [...solicitud.documentos] : [];
             const regComentariosEl = document.getElementById('regComentarios');
             if (regComentariosEl) {
-                regComentariosEl.value = isReadOnly ? '' : getComentarioEditableSolicitud(solicitud);
+                if (isReadOnly) {
+                    regComentariosEl.value = '';
+                } else if (isRiesgosObservadoEditableSolicitud(solicitud)) {
+                    regComentariosEl.value = solicitud.respuestaRiesgosBorrador || '';
+                    regComentariosEl.placeholder = 'Ingrese el comentario de respuesta a Riesgos. Los comentarios anteriores se mantienen en el historial.';
+                } else {
+                    regComentariosEl.value = getComentarioEditableSolicitud(solicitud);
+                    regComentariosEl.placeholder = 'Ingrese comentarios sobre los documentos adjuntos o el estado del checklist...';
+                }
             }
             toggleRegistroComentariosCards(isReadOnly, solicitud);
+            lockDatosClienteYConyugeRiesgosObservado(solicitud);
             renderChecklistTable();
             actualizarChecklistPorCarretera(carreteraSolicitud);
+            enableObservedEditableControls(solicitud);
 
             // Set checkboxes checks
             if (isReadOnly) {
@@ -4274,6 +4659,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (chkManualRecibo) chkManualRecibo.checked = !!solicitud.chkManualRecibo;
                 if (chkManualCotizacion) chkManualCotizacion.checked = !!solicitud.chkManualCotizacion;
             }
+            enableObservedEditableControls(solicitud);
+            lockDatosClienteYConyugeRiesgosObservado(solicitud);
 
             // Navigate to Registro screen
             document.querySelectorAll('.module-page').forEach(p => p.classList.remove('active'));
@@ -4297,15 +4684,77 @@ document.addEventListener('DOMContentLoaded', () => {
     // ============================
     // BANDEJA DOCUMENTARIA
     // ============================
+    function setDocumentariaFieldValue(id, value) {
+        const field = document.getElementById(id);
+        if (!field) return;
+        const safeValue = value ?? '';
+        if (field.tagName === 'SELECT' && safeValue && !Array.from(field.options).some(option => option.value === safeValue)) {
+            const option = document.createElement('option');
+            option.value = safeValue;
+            option.textContent = safeValue;
+            field.appendChild(option);
+        }
+        field.value = safeValue;
+    }
+
+    function getDocumentariaClienteBaseData(solicitud, numeroDocumento) {
+        const tipoDocumento = (solicitud.documento || 'DNI - 71865987').split(' - ')[0] || 'DNI';
+        const cliente = (solicitud.cliente || 'Pérez García Juan').trim();
+        const partesCliente = cliente.split(/\s+/).filter(Boolean);
+        const apellidoPaterno = partesCliente[0] || 'Pérez';
+        const apellidoMaterno = partesCliente[1] || 'García';
+        const nombres = partesCliente.slice(2).join(' ') || 'Juan';
+
+        return {
+            tipoDocumento,
+            numeroDocumento,
+            nombres,
+            apellidoPaterno,
+            apellidoMaterno,
+            fechaNacimiento: '11/05/1995',
+            telefono: solicitud.telefono || '922159933',
+            correo: 'juan.perez@email.com',
+            sexo: 'Masculino',
+            nacionalidad: 'Peruana',
+            residencia: 'Perú',
+            direccion: 'Av. Las Palmeras 123, San Miguel',
+            departamento: 'Lima',
+            provincia: 'Lima',
+            distrito: solicitud.tienda || 'San Miguel',
+            estadoCivil: 'Casado',
+            separacionBienes: 'No',
+            ...(solicitud.documentariaCliente || {})
+        };
+    }
+
+    function cargarDatosClienteDocumentaria(solicitud, numeroDocumento) {
+        const clienteDoc = getDocumentariaClienteBaseData(solicitud, numeroDocumento);
+
+        setDocumentariaFieldValue('docClienteTipoDoc', clienteDoc.tipoDocumento);
+        setDocumentariaFieldValue('docClienteNumero', clienteDoc.numeroDocumento);
+        setDocumentariaFieldValue('docClienteNombres', clienteDoc.nombres);
+        setDocumentariaFieldValue('docClienteApePaterno', clienteDoc.apellidoPaterno);
+        setDocumentariaFieldValue('docClienteApeMaterno', clienteDoc.apellidoMaterno);
+        setDocumentariaFieldValue('docClienteFechaNacimiento', clienteDoc.fechaNacimiento);
+        setDocumentariaFieldValue('docClienteTelefono', clienteDoc.telefono);
+        setDocumentariaFieldValue('docClienteCorreo', clienteDoc.correo);
+        setDocumentariaFieldValue('docClienteSexo', clienteDoc.sexo);
+        setDocumentariaFieldValue('docClienteNacionalidad', clienteDoc.nacionalidad);
+        setDocumentariaFieldValue('docClienteResidencia', clienteDoc.residencia);
+        setDocumentariaFieldValue('docClienteDireccion', clienteDoc.direccion);
+        setDocumentariaFieldValue('docClienteDepartamento', clienteDoc.departamento);
+        setDocumentariaFieldValue('docClienteProvincia', clienteDoc.provincia);
+        setDocumentariaFieldValue('docClienteDistrito', clienteDoc.distrito);
+        setDocumentariaFieldValue('docClienteEstadoCivil', clienteDoc.estadoCivil);
+        setDocumentariaFieldValue('docClienteSeparacionBienes', clienteDoc.separacionBienes);
+    }
+
     function showBandejaDocumentaria(solicitud) {
         const docSolicitudId = document.getElementById('docSolicitudId');
         const docFechaSimulacion = document.getElementById('docFechaSimulacion');
         const docEtapa = document.getElementById('docEtapa');
         const docResumenNumero = document.getElementById('docResumenNumero');
         const docResumenCliente = document.getElementById('docResumenCliente');
-        const docClienteNombre = document.getElementById('docClienteNombre');
-        const docClienteNumero = document.getElementById('docClienteNumero');
-        const docClienteTelefono = document.getElementById('docClienteTelefono');
         const numeroDocumento = (solicitud.documento || 'DNI - 71865987').split(' - ')[1] || '71865987';
 
         const isOperaciones = isOperacionesObservadoSolicitud(solicitud);
@@ -4317,9 +4766,7 @@ document.addEventListener('DOMContentLoaded', () => {
         actualizarEstadoDocumentariaResumen(solicitud);
         if (docResumenNumero) docResumenNumero.textContent = numeroDocumento;
         if (docResumenCliente) docResumenCliente.textContent = solicitud.cliente || 'Pérez García Juan';
-        if (docClienteNombre) docClienteNombre.value = solicitud.cliente || 'Juan Julio Ramirez Gonzales';
-        if (docClienteNumero) docClienteNumero.value = numeroDocumento;
-        if (docClienteTelefono) docClienteTelefono.value = solicitud.telefono || '928775998';
+        cargarDatosClienteDocumentaria(solicitud, numeroDocumento);
 
         currentDocumentariaSolicitud = solicitud;
         if (isOperaciones && typeof solicitud.operacionesRespuestaHabilitada !== 'boolean') {
@@ -4344,6 +4791,8 @@ document.addEventListener('DOMContentLoaded', () => {
         if (Array.isArray(solicitud.downloadedPostAprobacionDocs)) {
             solicitud.downloadedPostAprobacionDocs.forEach(docName => downloadedPostAprobacionDocs.add(docName));
         }
+        contratoGarantiaGenerado = !!solicitud.contratoGarantiaGenerado || downloadedPostAprobacionDocs.has('Contrato de garantía');
+        solicitud.contratoGarantiaGenerado = contratoGarantiaGenerado;
         postAprobacionCollapsed = !!solicitud.postAprobacionCollapsed;
         postAprobacionCompletionPopupShown = !!solicitud.postAprobacionCompletionPopupShown;
 
@@ -4439,17 +4888,41 @@ document.addEventListener('DOMContentLoaded', () => {
         return false;
     }
 
+    function isDocumentariaPendienteContratoGarantia() {
+        if (!currentDocumentariaSolicitud) return false;
+        return normalizarEtapa(currentDocumentariaSolicitud.etapa) === 'DOCUMENTARIA'
+            && normalizarEtapa(currentDocumentariaSolicitud.estado || 'PENDIENTE') === 'PENDIENTE';
+    }
+
+    function updateGenerarContratoGarantiaButtonState() {
+        if (docGarantiaContratoActions) {
+            docGarantiaContratoActions.hidden = !isDocumentariaPendienteContratoGarantia();
+        }
+        if (!btnGenerarContratoGarantia) return;
+
+        const icon = btnGenerarContratoGarantia.querySelector('.material-icons-outlined');
+        const label = btnGenerarContratoGarantia.querySelector('span:last-child');
+        btnGenerarContratoGarantia.disabled = contratoGarantiaGenerado;
+        btnGenerarContratoGarantia.classList.toggle('is-generated', contratoGarantiaGenerado);
+        btnGenerarContratoGarantia.title = contratoGarantiaGenerado
+            ? 'Contrato de garantía generado y desbloqueado.'
+            : 'Generar y desbloquear el contrato de garantía.';
+
+        if (icon) icon.textContent = contratoGarantiaGenerado ? 'check_circle' : 'article';
+        if (label) label.textContent = contratoGarantiaGenerado ? 'Contrato generado' : 'Generar contrato';
+    }
+
     function updateContratoGarantiaDownloadState() {
         const btnContratoGarantia = document.getElementById('btnDescargarContratoGarantia');
         if (!btnContratoGarantia) return;
 
-        const habilitarDescarga = isGarantiaCompleta();
+        const habilitarDescarga = contratoGarantiaGenerado;
         btnContratoGarantia.disabled = !habilitarDescarga;
         btnContratoGarantia.classList.toggle('is-disabled', !habilitarDescarga);
         btnContratoGarantia.setAttribute('aria-disabled', String(!habilitarDescarga));
         btnContratoGarantia.title = habilitarDescarga
             ? 'Descargar Contrato de garantía'
-            : 'Complete los datos del cuadro GARANTÍA para habilitar la descarga';
+            : 'Genere el contrato desde el cuadro GARANTÍA para habilitar la descarga';
 
         const icon = btnContratoGarantia.querySelector('.material-icons-outlined');
         if (icon) icon.textContent = habilitarDescarga ? 'download' : 'lock';
@@ -4459,6 +4932,8 @@ document.addEventListener('DOMContentLoaded', () => {
             docIcon.classList.toggle('warning', !habilitarDescarga);
             docIcon.setAttribute('aria-label', habilitarDescarga ? 'Documento generado' : 'Documento pendiente');
         }
+
+        updateGenerarContratoGarantiaButtonState();
     }
 
     function getDownloadablePostAprobacionDocs() {
@@ -4475,6 +4950,11 @@ document.addEventListener('DOMContentLoaded', () => {
 
     getGarantiaRequiredFields().forEach(field => {
         const actualizarFlujoDocumentario = () => {
+            if (contratoGarantiaGenerado) {
+                contratoGarantiaGenerado = false;
+                if (currentDocumentariaSolicitud) currentDocumentariaSolicitud.contratoGarantiaGenerado = false;
+                downloadedPostAprobacionDocs.delete('Contrato de garantía');
+            }
             updateGarantiaRequiredHighlights();
             updateContratoGarantiaDownloadState();
             syncDocumentariaDownloadFlow();
@@ -4482,6 +4962,23 @@ document.addEventListener('DOMContentLoaded', () => {
         field.addEventListener('input', actualizarFlujoDocumentario);
         field.addEventListener('change', actualizarFlujoDocumentario);
     });
+
+    if (btnGenerarContratoGarantia) {
+        btnGenerarContratoGarantia.addEventListener('click', () => {
+            if (contratoGarantiaGenerado) return;
+            if (!isGarantiaCompleta()) {
+                highlightMissingGarantiaFields();
+                showToast('Complete los datos obligatorios de GARANTÍA para generar el contrato.', 'warning');
+                return;
+            }
+
+            contratoGarantiaGenerado = true;
+            if (currentDocumentariaSolicitud) currentDocumentariaSolicitud.contratoGarantiaGenerado = true;
+            updateContratoGarantiaDownloadState();
+            syncDocumentariaDownloadFlow();
+            showToast('Contrato de garantía generado y desbloqueado.', 'success');
+        });
+    }
 
     document.querySelectorAll('.documentaria-documents .doc-download-btn').forEach(btn => {
         btn.addEventListener('click', () => {
@@ -4496,6 +4993,14 @@ document.addEventListener('DOMContentLoaded', () => {
         btnDescargarTodosDocs.addEventListener('click', () => {
             if (!isGarantiaCompleta()) {
                 highlightMissingGarantiaFields();
+                return;
+            }
+            if (!contratoGarantiaGenerado) {
+                setDocumentariaTab('vehiculo');
+                if (btnGenerarContratoGarantia && docGarantiaContratoActions && !docGarantiaContratoActions.hidden) {
+                    btnGenerarContratoGarantia.focus({ preventScroll: true });
+                }
+                showToast('Primero genere el contrato de garantía para desbloquear su descarga.', 'warning');
                 return;
             }
 

@@ -3845,6 +3845,51 @@ select.form-control {
     grid-column: span 2;
 }
 
+.documentaria-client-grid {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 14px 14px;
+    align-items: start;
+}
+
+.documentaria-client-span-2 {
+    grid-column: span 2;
+}
+
+.documentaria-client-span-4 {
+    grid-column: 1 / -1;
+}
+
+.documentaria-card.documentaria-client-card .form-control[readonly],
+.documentaria-card.documentaria-client-card .form-control:disabled {
+    background: var(--bg-white);
+    color: var(--text-primary);
+    border-color: var(--input-border);
+    cursor: default;
+    opacity: 1;
+}
+
+.documentaria-card.documentaria-client-card .doc-locked-field,
+.documentaria-card.documentaria-client-card .doc-locked-field[readonly],
+.documentaria-card.documentaria-client-card .doc-locked-field:disabled {
+    background: #eef4fb;
+    color: #0d2f81;
+    border-color: #c7d7fe;
+}
+
+.documentaria-client-card .form-hint {
+    line-height: 1.35;
+}
+
+@media (max-width: 1180px) {
+    .documentaria-client-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+    .documentaria-client-span-4 {
+        grid-column: span 2;
+    }
+}
+
 .doc-control,
 .documentaria-card .form-control:disabled,
 .documentaria-card .form-control[readonly] {
@@ -3867,6 +3912,46 @@ select.form-control {
 
 .documentaria-card .field-required-missing .form-label {
     color: var(--danger-red);
+}
+
+.garantia-contract-actions {
+    align-items: flex-start;
+    margin-top: -4px;
+}
+
+.btn-generar-contrato {
+    height: 34px;
+    padding: 0 14px;
+    border-radius: var(--radius-sm);
+    background: var(--primary-blue);
+    color: white;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    font-size: 0.76rem;
+    font-weight: 800;
+    box-shadow: 0 2px 6px rgba(13, 47, 129, 0.18);
+    transition: all var(--transition-fast);
+    width: fit-content;
+}
+
+.btn-generar-contrato:hover:not(:disabled) {
+    background: var(--primary-blue-dark);
+    transform: translateY(-1px);
+}
+
+.btn-generar-contrato .material-icons-outlined {
+    font-size: 16px;
+}
+
+.btn-generar-contrato.is-generated,
+.btn-generar-contrato:disabled {
+    background: #ecfdf5;
+    border: 1px solid #bbf7d0;
+    color: #047857;
+    cursor: default;
+    box-shadow: none;
 }
 
 .documentaria-documents-header {
@@ -4346,10 +4431,13 @@ select.form-control {
         flex-wrap: wrap;
     }
     .documentaria-tabs,
-    .documentaria-form-grid {
+    .documentaria-form-grid,
+    .documentaria-client-grid {
         grid-template-columns: 1fr;
     }
-    .documentaria-span-2 {
+    .documentaria-span-2,
+    .documentaria-client-span-2,
+    .documentaria-client-span-4 {
         grid-column: span 1;
     }
 }
