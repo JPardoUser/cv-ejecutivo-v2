@@ -124,12 +124,16 @@
                             </div>
                         </div>
 
-                        <!-- Row 2: Teléfono -->
-                        <div class="form-row single">
+                        <!-- Row 2: Teléfono + Precio del vehículo -->
+                        <div class="form-row">
                             <div class="form-group">
                                 <label class="form-label" for="nroTelefono">N° de teléfono</label>
                                 <input type="tel" class="form-control" id="nroTelefono" name="nroTelefono" placeholder="Ingrese teléfono" maxlength="9">
                                 <span class="form-hint">Se habilitará al seleccionar Simular.</span>
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label" for="simPrecioVehiculoUsd">Precio del vehículo ($)<span class="required">*</span></label>
+                                <input type="text" class="form-control" id="simPrecioVehiculoUsd" name="simPrecioVehiculoUsd" placeholder="00.00" inputmode="decimal" required>
                             </div>
                         </div>
 
@@ -401,6 +405,30 @@
                                         <input type="text" class="form-control cuota-inicial-percent" id="calcCuotaInicialPorcentaje" value="43.33%" readonly title="Porcentaje de cuota inicial sobre el precio del vehículo">
                                     </div>
                                 </div>
+                                <div class="form-group">
+                                    <label class="form-label" for="calcMontoFinanciar">Monto a financiar</label>
+                                    <input type="text" class="form-control" id="calcMontoFinanciar" value="S/ 0.00" readonly>
+                                </div>
+                                <div class="form-group">
+                                    <label class="form-label" for="calcPlazoSeleccionado">Plazo seleccionado</label>
+                                    <select class="form-control" id="calcPlazoSeleccionado">
+                                        <option value="12">12 meses</option>
+                                        <option value="24" selected>24 meses</option>
+                                        <option value="36">36 meses</option>
+                                        <option value="48">48 meses</option>
+                                        <option value="60">60 meses</option>
+                                    </select>
+                                </div>
+                                <div class="form-group">
+                                    <label class="form-label" for="calcDiaPago">Día de pago</label>
+                                    <select class="form-control" id="calcDiaPago">
+                                        <option value="03" selected>03</option>
+                                        <option value="05">05</option>
+                                        <option value="10">10</option>
+                                        <option value="15">15</option>
+                                        <option value="25">25</option>
+                                    </select>
+                                </div>
                             </div>
                         </section>
 
@@ -415,7 +443,7 @@
                                     </select>
                                 </div>
                                 <div class="form-group">
-                                    <label class="form-label" for="calcPorcentajeSeguroVehicular">Porcentaje de seguro</label>
+                                    <label class="form-label" for="calcPorcentajeSeguroVehicular">Tasa anual del seguro</label>
                                     <input type="text" class="form-control" id="calcPorcentajeSeguroVehicular" value="0.00%" placeholder="00.00%" inputmode="decimal">
                                 </div>
                                 <div class="form-group">
@@ -445,6 +473,13 @@
                                     <select class="form-control" id="calcGps">
                                         <option value="SI" selected>Sí</option>
                                         <option value="NO">No</option>
+                                    </select>
+                                </div>
+                                <div class="form-group" id="calcTipoGpsGroup">
+                                    <label class="form-label" for="calcTipoGps">Tipo de GPS</label>
+                                    <select class="form-control" id="calcTipoGps">
+                                        <option value="Premium" selected>Premium</option>
+                                        <option value="Basico">Básico</option>
                                     </select>
                                 </div>
                                 <div class="form-group">
@@ -503,40 +538,6 @@
                                     <input type="checkbox" id="chkPilotoCondiciones">
                                     <span>El caso cumple las condiciones del piloto</span>
                                 </label>
-                            </div>
-                        </section>
-
-                        <section class="calculo-param-section">
-                            <h4>Crédito</h4>
-                            <div class="calculo-grid">
-                                <div class="form-group">
-                                    <label class="form-label" for="calcMontoFinanciar">Monto a financiar</label>
-                                    <input type="text" class="form-control" id="calcMontoFinanciar" value="S/ 0.00" readonly>
-                                </div>
-                                <div class="form-group">
-                                    <label class="form-label" for="calcCuotaMaxima">Capacidad de cuota máxima</label>
-                                    <input type="text" class="form-control" id="calcCuotaMaxima" value="S/ 0.00" readonly>
-                                </div>
-                                <div class="form-group">
-                                    <label class="form-label" for="calcPlazoSeleccionado">Plazo seleccionado</label>
-                                    <select class="form-control" id="calcPlazoSeleccionado">
-                                        <option value="12">12 meses</option>
-                                        <option value="24" selected>24 meses</option>
-                                        <option value="36">36 meses</option>
-                                        <option value="48">48 meses</option>
-                                        <option value="60">60 meses</option>
-                                    </select>
-                                </div>
-                                <div class="form-group">
-                                    <label class="form-label" for="calcDiaPago">Día de pago</label>
-                                    <select class="form-control" id="calcDiaPago">
-                                        <option value="03" selected>03</option>
-                                        <option value="05">05</option>
-                                        <option value="10">10</option>
-                                        <option value="15">15</option>
-                                        <option value="25">25</option>
-                                    </select>
-                                </div>
                             </div>
                         </section>
                     </div>

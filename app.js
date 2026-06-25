@@ -20,6 +20,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const tipoDocumento = document.getElementById('tipoDocumento');
     const nroDocumento = document.getElementById('nroDocumento');
     const nroTelefono = document.getElementById('nroTelefono');
+    const simPrecioVehiculoUsd = document.getElementById('simPrecioVehiculoUsd');
     const simConcesionario = document.getElementById('simConcesionario');
     const simSucursal = document.getElementById('simSucursal');
     const calcTelefonoPoliticas = document.getElementById('calcTelefonoPoliticas');
@@ -180,6 +181,10 @@ document.addEventListener('DOMContentLoaded', () => {
         document.getElementById('resCuotaMaxima').textContent = `S/ ${mockData.capacidadCuotaMaxima}`;
         const calcCuotaMaxima = document.getElementById('calcCuotaMaxima');
         if (calcCuotaMaxima) calcCuotaMaxima.value = `S/ ${mockData.capacidadCuotaMaxima}`;
+        if (solicitud.precioVehiculoUsd && simPrecioVehiculoUsd) {
+            simPrecioVehiculoUsd.value = formatearDecimal(solicitud.precioVehiculoUsd);
+            syncPrecioVehiculoSimulacionCalculo();
+        }
 
         const calificacionCard = document.querySelector('.resultado-calificacion');
         const calificacionIcon = calificacionCard?.querySelector('.resultado-calificacion-icon .material-icons-outlined');
@@ -658,6 +663,13 @@ document.addEventListener('DOMContentLoaded', () => {
             isValid = true;
         }
 
+        if (isValid) {
+            const precioVehiculo = simPrecioVehiculoUsd ? parseMoneyValue(simPrecioVehiculoUsd.value) : 0;
+            if (precioVehiculo <= 0) {
+                isValid = false;
+            }
+        }
+
         // If cónyuge is active, also validate cónyuge DNI
         if (isValid && toggleConyuge.checked) {
             const conyugeDoc = document.getElementById('nroDocConyuge').value.trim();
@@ -699,6 +711,29 @@ document.addEventListener('DOMContentLoaded', () => {
     nroTelefono.addEventListener('input', (e) => {
         e.target.value = e.target.value.replace(/\D/g, '');
     });
+
+    function syncPrecioVehiculoSimulacionCalculo() {
+        const calcPrecioVehiculo = document.getElementById('calcPrecioUsd');
+        if (!simPrecioVehiculoUsd || !calcPrecioVehiculo) return;
+
+        const precioSimulacion = simPrecioVehiculoUsd.value.trim();
+        if (!precioSimulacion || parseMoneyValue(precioSimulacion) <= 0) return;
+
+        calcPrecioVehiculo.value = formatearDecimal(precioSimulacion);
+        validarCuotaInicialContraPrecio(false);
+    }
+
+    if (simPrecioVehiculoUsd) {
+        simPrecioVehiculoUsd.addEventListener('input', (e) => {
+            e.target.value = normalizarDecimalInput(e.target.value);
+            validateSimulacionForm();
+        });
+        simPrecioVehiculoUsd.addEventListener('blur', (e) => {
+            e.target.value = formatearDecimal(e.target.value);
+            syncPrecioVehiculoSimulacionCalculo();
+            validateSimulacionForm();
+        });
+    }
 
     if (calcTelefonoPoliticas) {
         calcTelefonoPoliticas.addEventListener('input', (e) => {
@@ -1139,7 +1174,10 @@ document.addEventListener('DOMContentLoaded', () => {
         btn.addEventListener('click', () => {
             const esCalculo = btn.dataset.target === 'tabCalculo';
             showFlujoTab(esCalculo ? 'calculo' : 'resultado');
-            if (esCalculo) syncTelefonoPoliticasCalculo();
+            if (esCalculo) {
+                syncTelefonoPoliticasCalculo();
+                syncPrecioVehiculoSimulacionCalculo();
+            }
             window.scrollTo({ top: 0, behavior: 'smooth' });
         });
     });
@@ -1184,6 +1222,7 @@ document.addEventListener('DOMContentLoaded', () => {
             etapa: 'SIMULACIÓN',
             estado: 'PENDIENTE',
             telefono: nroTelefono.value.trim() || '922159933',
+            precioVehiculoUsd: formatearDecimal(simPrecioVehiculoUsd?.value || '0'),
             habilitarNavegacionEtapas: true
         };
         solicitudes.unshift(newSimSol);
@@ -1205,6 +1244,7 @@ document.addEventListener('DOMContentLoaded', () => {
         document.getElementById('resCuotaMaxima').textContent = `S/ ${mockData.capacidadCuotaMaxima}`;
         const calcCuotaMaxima = document.getElementById('calcCuotaMaxima');
         if (calcCuotaMaxima) calcCuotaMaxima.value = `S/ ${mockData.capacidadCuotaMaxima}`;
+        syncPrecioVehiculoSimulacionCalculo();
         const calcIngresoDeclaradoInicial = document.getElementById('calcIngresoDeclarado');
         if (calcIngresoDeclaradoInicial) calcIngresoDeclaradoInicial.value = '';
 
@@ -1318,6 +1358,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (calcCuotaMaxima && resCuotaMaxima) calcCuotaMaxima.value = resCuotaMaxima.textContent;
         syncIngresoEstimadoCalculo();
         syncTelefonoPoliticasCalculo();
+        syncPrecioVehiculoSimulacionCalculo();
         document.getElementById('calcResultadoCard').style.display = 'none';
         document.querySelectorAll('#calcCuotasBody tr').forEach(r => r.classList.remove('selected'));
         updateContinuarDesdeCalculoState();
@@ -1534,6 +1575,11 @@ document.addEventListener('DOMContentLoaded', () => {
         return reglas;
     }
 
+    function actualizarCarreteraPorCapacidadSeleccionada(filaSeleccionada, carreteraBase = 'EXPRESS') {
+        const noCumpleCapacidad = filaSeleccionada?.dataset?.capacidadCumple === 'NO';
+        actualizarPoliticasPorCarretera(noCumpleCapacidad ? 'FULL' : carreteraBase);
+    }
+
     function getCarreteraActual() {
         const calcCarretera = document.getElementById('calcCarretera');
         return normalizarCarretera(calcCarretera?.textContent || currentCarretera || 'EXPRESS');
@@ -1671,6 +1717,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (calcMontoFinanciar) calcMontoFinanciar.value = formatMoneyValue(montoFinanciar, 'S/');
 
         const { ingresoEstimado, ingresoDeclarado, ingresoBase } = obtenerBaseIngresoCalculo();
+        const carreteraBaseCalculo = ingresoDeclarado > ingresoEstimado ? 'FULL' : 'EXPRESS';
         const tasaMensual = Math.pow(1 + tea, 1 / 12) - 1;
         const plazoSeleccionado = parseInt(document.getElementById('calcPlazoSeleccionado').value, 10) || 24;
         const cuotaMensualMaxima = actualizarCapacidadCuotaMaximaCalculo(false);
@@ -1685,6 +1732,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 : montoFinanciar / plazo;
             const cumple = cuota <= cuotaMensualMaxima;
             const tr = document.createElement('tr');
+            tr.dataset.capacidadCumple = cumple ? 'SI' : 'NO';
+            tr.dataset.carreteraBase = carreteraBaseCalculo;
             tr.innerHTML = `
                 <td><strong>${plazo} meses</strong></td>
                 <td>${(tea * 100).toFixed(2)}%</td>
@@ -1694,16 +1743,22 @@ document.addEventListener('DOMContentLoaded', () => {
             tr.addEventListener('click', () => {
                 document.querySelectorAll('#calcCuotasBody tr').forEach(row => row.classList.remove('selected'));
                 tr.classList.add('selected');
+                actualizarCarreteraPorCapacidadSeleccionada(tr, carreteraBaseCalculo);
                 updateContinuarDesdeCalculoState();
             });
             if (teniaFilaSeleccionada) {
                 tr.classList.add('selected');
+                actualizarCarreteraPorCapacidadSeleccionada(tr, carreteraBaseCalculo);
             }
             tbody.appendChild(tr);
         });
 
-        const carreteraCalculada = ingresoDeclarado > ingresoEstimado ? 'FULL' : 'EXPRESS';
-        actualizarPoliticasPorCarretera(carreteraCalculada);
+        const filaSeleccionada = document.querySelector('#calcCuotasBody tr.selected');
+        if (filaSeleccionada) {
+            actualizarCarreteraPorCapacidadSeleccionada(filaSeleccionada, carreteraBaseCalculo);
+        } else {
+            actualizarPoliticasPorCarretera(carreteraBaseCalculo);
+        }
         document.getElementById('calcResultadoCard').style.display = 'block';
         updateContinuarDesdeCalculoState();
         if (mostrarToast) {
@@ -1795,6 +1850,36 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     });
     actualizarPorcentajeCuotaInicial();
+
+    function aplicarCostoGpsSegunSeleccion() {
+        const calcGps = document.getElementById('calcGps');
+        const calcCostoGps = document.getElementById('calcCostoGps');
+        const calcTipoGpsGroup = document.getElementById('calcTipoGpsGroup');
+        if (!calcGps || !calcCostoGps) return;
+
+        const gpsSeleccionado = String(calcGps.value || '').trim().toUpperCase();
+        const mostrarTipoGps = gpsSeleccionado === 'SI';
+
+        if (calcTipoGpsGroup) {
+            calcTipoGpsGroup.style.display = mostrarTipoGps ? '' : 'none';
+        }
+
+        if (!mostrarTipoGps) {
+            calcCostoGps.value = '00.00';
+        }
+    }
+
+    const calcGpsControl = document.getElementById('calcGps');
+    const calcCostoGpsInput = document.getElementById('calcCostoGps');
+    if (calcGpsControl) {
+        calcGpsControl.addEventListener('change', aplicarCostoGpsSegunSeleccion);
+    }
+    if (calcCostoGpsInput) {
+        calcCostoGpsInput.addEventListener('input', () => {
+            aplicarCostoGpsSegunSeleccion();
+        });
+    }
+    aplicarCostoGpsSegunSeleccion();
 
     const calcPorcentajeSeguroVehicularInput = document.getElementById('calcPorcentajeSeguroVehicular');
     if (calcPorcentajeSeguroVehicularInput) {
@@ -3737,6 +3822,7 @@ document.addEventListener('DOMContentLoaded', () => {
     btnLimpiar.addEventListener('click', () => {
         nroDocumento.value = '';
         nroTelefono.value = '';
+        if (simPrecioVehiculoUsd) simPrecioVehiculoUsd.value = '';
         if (calcTelefonoPoliticas) {
             calcTelefonoPoliticas.value = '';
             clearTelefonoPoliticasHighlight();
@@ -4518,6 +4604,10 @@ document.addEventListener('DOMContentLoaded', () => {
             document.getElementById('resCuotaMaxima').textContent = `S/ ${mockData.capacidadCuotaMaxima}`;
             const calcCuotaMaximaReset = document.getElementById('calcCuotaMaxima');
             if (calcCuotaMaximaReset) calcCuotaMaximaReset.value = `S/ ${mockData.capacidadCuotaMaxima}`;
+            if (solicitud.precioVehiculoUsd && simPrecioVehiculoUsd) {
+                simPrecioVehiculoUsd.value = formatearDecimal(solicitud.precioVehiculoUsd);
+                syncPrecioVehiculoSimulacionCalculo();
+            }
             const calcIngresoDeclaradoReset = document.getElementById('calcIngresoDeclarado');
             if (calcIngresoDeclaradoReset) calcIngresoDeclaradoReset.value = '';
 
