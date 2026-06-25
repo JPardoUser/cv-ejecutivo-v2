@@ -870,15 +870,17 @@ select.form-control {
 }
 
 .btn-limpiar {
-    background: var(--primary-blue);
-    color: var(--text-white);
-    box-shadow: 0 2px 8px rgba(13, 47, 129, 0.3);
+    background: #e5e7eb;
+    color: var(--text-secondary);
+    border: 1px solid #d1d5db;
+    box-shadow: none;
 }
 
 .btn-limpiar:hover {
-    background: var(--primary-blue-dark);
+    background: #d1d5db;
+    color: var(--text-primary);
     transform: translateY(-1px);
-    box-shadow: 0 4px 14px rgba(13, 47, 129, 0.4);
+    box-shadow: 0 2px 8px rgba(107, 114, 128, 0.18);
 }
 
 .btn-simular {
@@ -4549,7 +4551,7 @@ select.form-control {
 
 .calculo-footer-fields {
     display: grid;
-    grid-template-columns: minmax(220px, 320px);
+    grid-template-columns: minmax(220px, 320px) minmax(180px, 220px) minmax(140px, 180px);
     gap: 16px;
     align-items: flex-start;
     flex: 1;

@@ -181,8 +181,8 @@
                                 El cliente acepta que sus datos ingresados serán utilizados para la simulación y evaluación preliminar de crédito
                             </span>
                             <div class="form-footer-actions">
-                                <button type="button" class="btn btn-simular" id="btnSimular" disabled>Simular</button>
                                 <button type="button" class="btn btn-limpiar" id="btnLimpiar">Limpiar</button>
+                                <button type="button" class="btn btn-simular" id="btnSimular" disabled>Simular</button>
                             </div>
                         </div>
                     </form>
@@ -406,10 +406,6 @@
                                     </div>
                                 </div>
                                 <div class="form-group">
-                                    <label class="form-label" for="calcMontoFinanciar">Monto a financiar</label>
-                                    <input type="text" class="form-control" id="calcMontoFinanciar" value="S/ 0.00" readonly>
-                                </div>
-                                <div class="form-group">
                                     <label class="form-label" for="calcPlazoSeleccionado">Plazo seleccionado</label>
                                     <select class="form-control" id="calcPlazoSeleccionado">
                                         <option value="12">12 meses</option>
@@ -417,16 +413,6 @@
                                         <option value="36">36 meses</option>
                                         <option value="48">48 meses</option>
                                         <option value="60">60 meses</option>
-                                    </select>
-                                </div>
-                                <div class="form-group">
-                                    <label class="form-label" for="calcDiaPago">Día de pago</label>
-                                    <select class="form-control" id="calcDiaPago">
-                                        <option value="03" selected>03</option>
-                                        <option value="05">05</option>
-                                        <option value="10">10</option>
-                                        <option value="15">15</option>
-                                        <option value="25">25</option>
                                     </select>
                                 </div>
                             </div>
@@ -554,6 +540,20 @@
                             <div class="form-group calculo-telefono-politicas">
                                 <label class="form-label" for="calcTelefonoPoliticas">N° de teléfono</label>
                                 <input type="tel" class="form-control" id="calcTelefonoPoliticas" placeholder="Ingrese teléfono" maxlength="9">
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label" for="calcMontoFinanciar">Monto a financiar</label>
+                                <input type="text" class="form-control" id="calcMontoFinanciar" value="S/ 0.00" readonly>
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label" for="calcDiaPago">Día de pago</label>
+                                <select class="form-control" id="calcDiaPago">
+                                    <option value="03" selected>03</option>
+                                    <option value="05">05</option>
+                                    <option value="10">10</option>
+                                    <option value="15">15</option>
+                                    <option value="25">25</option>
+                                </select>
                             </div>
                         </div>
                         <button type="button" class="btn btn-recalcular" id="btnCalcularCuotas">

@@ -187,7 +187,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     <span class="material-icons-outlined">warning_amber</span>
                 </div>
                 <p class="popup-confirmacion-text">
-                    ¿Está seguro de realizar cambios dentro del stage-nav-tab de <strong>Simulación</strong>?
+                    ¿Está seguro de realizar cambios, tendrá que volver a calcular?
                 </p>
             </div>
         `;
