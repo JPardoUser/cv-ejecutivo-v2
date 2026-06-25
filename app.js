@@ -61,7 +61,12 @@ document.addEventListener('DOMContentLoaded', () => {
     let isSolicitudReadOnly = false;
     let currentCarretera = 'EXPRESS';
     let simulacionConfirmCancelHandler = null;
+    let simulacionStageChangeCancelHandler = null;
+    let pendingStageSimulacionChange = null;
     let stageNavigationEnabledForCurrentFlow = false;
+    let stageSimulacionChangeGuardSolicitudId = null;
+    let stageSimulacionChangeGuardBaseline = new WeakMap();
+    let suspendStageSimulacionChangeGuard = false;
 
 
     // ============================
@@ -96,6 +101,152 @@ document.addEventListener('DOMContentLoaded', () => {
         const solicitudActual = solicitudes.find(s => s.id === currentSolicitudId);
         return !!(stageNavigationEnabledForCurrentFlow && solicitudActual && solicitudActual.habilitarNavegacionEtapas === true);
     }
+
+    function getCurrentSolicitudActiva() {
+        return solicitudes.find(s => s.id === currentSolicitudId) || null;
+    }
+
+    function getStageSimulacionGuardControls() {
+        const moduloResultado = document.getElementById('moduloResultado');
+        if (!moduloResultado) return [];
+        return Array.from(moduloResultado.querySelectorAll('input, select, textarea')).filter(control => {
+            if (!control || control.type === 'hidden' || control.type === 'button' || control.type === 'submit') return false;
+            if (control.readOnly || control.disabled) return false;
+            return true;
+        });
+    }
+
+    function activarGuardiaCambiosStageSimulacion(solicitudId) {
+        stageSimulacionChangeGuardSolicitudId = solicitudId || null;
+        stageSimulacionChangeGuardBaseline = new WeakMap();
+        getStageSimulacionGuardControls().forEach(control => {
+            stageSimulacionChangeGuardBaseline.set(control, control.value);
+        });
+    }
+
+    function refrescarBaselineGuardiaCambiosStageSimulacion() {
+        if (!stageSimulacionChangeGuardSolicitudId) return;
+        getStageSimulacionGuardControls().forEach(control => {
+            stageSimulacionChangeGuardBaseline.set(control, control.value);
+        });
+    }
+
+    function desactivarGuardiaCambiosStageSimulacion() {
+        stageSimulacionChangeGuardSolicitudId = null;
+        stageSimulacionChangeGuardBaseline = new WeakMap();
+        pendingStageSimulacionChange = null;
+        simulacionStageChangeCancelHandler = null;
+    }
+
+    function limpiarConfirmacionCambioStageSimulacionHandler() {
+        if (simulacionStageChangeCancelHandler) {
+            const cancelBtn = document.getElementById('modalBtnCancel');
+            if (cancelBtn) cancelBtn.removeEventListener('click', simulacionStageChangeCancelHandler, true);
+        }
+        simulacionStageChangeCancelHandler = null;
+    }
+
+    function restaurarCambioStageSimulacionPendiente() {
+        if (!pendingStageSimulacionChange) return;
+        const { control, previousValue } = pendingStageSimulacionChange;
+        pendingStageSimulacionChange = null;
+        limpiarConfirmacionCambioStageSimulacionHandler();
+        if (control && document.contains(control)) {
+            suspendStageSimulacionChangeGuard = true;
+            control.value = previousValue;
+            control.dispatchEvent(new Event('input', { bubbles: true }));
+            control.dispatchEvent(new Event('change', { bubbles: true }));
+            suspendStageSimulacionChangeGuard = false;
+            stageSimulacionChangeGuardBaseline.set(control, previousValue);
+        }
+    }
+
+    function confirmarCambioStageSimulacion() {
+        pendingStageSimulacionChange = null;
+        limpiarConfirmacionCambioStageSimulacionHandler();
+        const solicitudActual = getCurrentSolicitudActiva();
+        if (!solicitudActual) return;
+
+        solicitudActual.etapa = 'SIMULACIÓN';
+        solicitudActual.estado = 'PENDIENTE';
+        renderStageNavigation('resultadoStageTabs', solicitudActual.etapa, solicitudActual.estado, 'SIMULACION');
+        desactivarGuardiaCambiosStageSimulacion();
+        if (typeof applyBandejaFilters === 'function') applyBandejaFilters();
+        showToast('La solicitud volvió a etapa Simulación.', 'success');
+    }
+
+    function mostrarConfirmacionCambioStageSimulacion(control, previousValue) {
+        if (!control) return;
+        pendingStageSimulacionChange = { control, previousValue };
+        limpiarConfirmacionCambioStageSimulacionHandler();
+
+        modalTitle.textContent = 'Confirmación de cambios';
+        modalBody.innerHTML = `
+            <div class="popup-confirmacion-simulacion">
+                <div class="popup-confirmacion-icon">
+                    <span class="material-icons-outlined">warning_amber</span>
+                </div>
+                <p class="popup-confirmacion-text">
+                    ¿Está seguro de realizar cambios dentro del stage-nav-tab de <strong>Simulación</strong>?
+                </p>
+            </div>
+        `;
+
+        const cancelBtn = document.getElementById('modalBtnCancel');
+        const oldActionBtn = document.getElementById('modalBtnAction');
+        const newActionBtn = oldActionBtn.cloneNode(true);
+        oldActionBtn.parentNode.replaceChild(newActionBtn, oldActionBtn);
+
+        cancelBtn.style.display = 'inline-flex';
+        cancelBtn.textContent = 'Cancelar';
+        newActionBtn.style.display = 'inline-flex';
+        newActionBtn.textContent = 'Aceptar';
+
+        simulacionStageChangeCancelHandler = (event) => {
+            event.preventDefault();
+            event.stopImmediatePropagation();
+            restaurarCambioStageSimulacionPendiente();
+            closeModal();
+        };
+        cancelBtn.addEventListener('click', simulacionStageChangeCancelHandler, true);
+
+        newActionBtn.addEventListener('click', () => {
+            confirmarCambioStageSimulacion();
+            closeModal();
+        });
+
+        modalOverlay.classList.add('active');
+        document.body.style.overflow = 'hidden';
+    }
+
+    function debeActivarConfirmacionCambioStageSimulacion(control) {
+        if (suspendStageSimulacionChangeGuard || pendingStageSimulacionChange) return false;
+        if (!stageSimulacionChangeGuardSolicitudId || currentSolicitudId !== stageSimulacionChangeGuardSolicitudId) return false;
+        if (!control || control.readOnly || control.disabled || control.type === 'hidden') return false;
+        const solicitudActual = getCurrentSolicitudActiva();
+        return !!(solicitudActual && normalizarEtapa(solicitudActual.etapa) === 'SOLICITUD');
+    }
+
+    function manejarCambioStageSimulacionProtegido(event) {
+        const control = event.target;
+        if (!debeActivarConfirmacionCambioStageSimulacion(control)) return;
+        const previousValue = stageSimulacionChangeGuardBaseline.has(control)
+            ? stageSimulacionChangeGuardBaseline.get(control)
+            : control.defaultValue || '';
+        const currentValue = control.value;
+        if (String(previousValue) === String(currentValue)) return;
+        mostrarConfirmacionCambioStageSimulacion(control, previousValue);
+    }
+
+    document.addEventListener('input', (event) => {
+        if (!event.target.closest('#moduloResultado')) return;
+        manejarCambioStageSimulacionProtegido(event);
+    }, true);
+
+    document.addEventListener('change', (event) => {
+        if (!event.target.closest('#moduloResultado')) return;
+        manejarCambioStageSimulacionProtegido(event);
+    }, true);
 
     function renderStageNavigation(containerId, etapaActual = 'SIMULACIÓN', estadoActual = 'PENDIENTE', etapaSeleccionada = null) {
         const container = document.getElementById(containerId);
@@ -242,10 +393,18 @@ document.addEventListener('DOMContentLoaded', () => {
         if (targetIndex < 0 || targetIndex > currentIndex) return;
 
         if (targetStage === 'SIMULACION') {
+            const vieneDesdeSolicitud = normalizarEtapa(solicitudActual.etapa) === 'SOLICITUD';
             showResultadoStageFromNavigation(solicitudActual);
+            if (vieneDesdeSolicitud) {
+                activarGuardiaCambiosStageSimulacion(solicitudActual.id);
+            } else {
+                desactivarGuardiaCambiosStageSimulacion();
+            }
         } else if (targetStage === 'SOLICITUD' || targetStage === 'RIESGOS') {
+            desactivarGuardiaCambiosStageSimulacion();
             showSolicitudStageFromNavigation(solicitudActual);
         } else if (['DOCUMENTARIA', 'FIRMA', 'OPERACIONES'].includes(targetStage)) {
+            desactivarGuardiaCambiosStageSimulacion();
             showBandejaDocumentaria(solicitudActual);
             renderStageNavigation('documentariaStageTabs', solicitudActual.etapa || targetStage, solicitudActual.estado || 'PENDIENTE', targetStage);
         }
@@ -481,7 +640,6 @@ document.addEventListener('DOMContentLoaded', () => {
                     regGastosDelivery: 'NO',
                     regPlanGpx: 'Premium',
                     regGastosInclGpx: 'S/ 650.00',
-                    regKitMantenimiento: 'No',
                     regCuotasDobles: 'No',
                     regIncluirPortes: 'Si'
                 },
@@ -489,11 +647,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     regSegVehicular: 'Financiado',
                     regSegVehCosto: 'S/ 1,850.00',
                     regSegDesgravamen: 'SI',
-                    regSegDesgProd: 'Individual',
-                    regSegDesgCosto: 'S/ 0.00',
-                    regSegOptativo: 'No',
-                    regSegOptCosto: 'NO',
-                    regSegOptTipo: ''
+                    regSegDesgProd: 'Individual'
                 }
             },
             comentarioEjecutivo: {
@@ -607,6 +761,7 @@ document.addEventListener('DOMContentLoaded', () => {
         item.addEventListener('click', (e) => {
             e.preventDefault();
             saveCurrentRegistrationState();
+            desactivarGuardiaCambiosStageSimulacion();
             stageNavigationEnabledForCurrentFlow = false;
             const targetModule = item.dataset.module;
 
@@ -812,6 +967,11 @@ document.addEventListener('DOMContentLoaded', () => {
         return uppercase ? (isSi ? 'SI' : 'NO') : (isSi ? 'Si' : 'No');
     }
 
+    function getPlanGpsSolicitudDesdeCalculo() {
+        const gpsSeleccionado = String(getControlValue('calcGps', 'SI') || '').trim().toUpperCase();
+        return gpsSeleccionado === 'NO' ? 'Ninguno' : 'Premium';
+    }
+
     function getCalculoSolicitudData() {
         const monedaPrecio = getMonedaPrecioCalculoSymbol();
         const plazoMeses = getControlValue('calcPlazoSeleccionado', '24');
@@ -827,8 +987,11 @@ document.addEventListener('DOMContentLoaded', () => {
             gastosRegistrales: normalizeSiNoForSolicitud(getControlValue('calcRegistral', 'SI'), true),
             gastosDelivery: normalizeSiNoForSolicitud(getControlValue('calcTomaFirmas', 'SI'), true),
             incluirPortes: normalizeSiNoForSolicitud(getControlValue('calcPortes', 'NO')),
+            cuotasDobles: normalizeSiNoForSolicitud(getControlValue('calcCuotasDobles', 'No')),
             costoGps: getCalculoMoneyValue('calcCostoGps', '$'),
+            planGps: getPlanGpsSolicitudDesdeCalculo(),
             seguroVehicular: getSeguroVehicularCalculoValue(),
+            costoSeguroVehicular: getCostoSeguroVehicularCalculoValue(),
             seguroDesgravamen: getSeguroDesgravamenCalculoValue(),
             tipoSeguroDesgravamen: getTipoSeguroDesgravamenCalculoValue()
         };
@@ -836,6 +999,10 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function getSeguroVehicularCalculoValue() {
         return getSelectTextValue('calcTipoSeguroVehicular', 'Banco');
+    }
+
+    function getCostoSeguroVehicularCalculoValue() {
+        return getCalculoMoneyValue('calcPorcentajeSeguroVehicular', 'S/');
     }
 
     function getSeguroDesgravamenCalculoValue() {
@@ -884,6 +1051,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function aplicarSegurosSolicitudDesdeCalculo(solicitud = null) {
         setRegistroFieldValue('regSegVehicular', solicitud?.seguroVehicular || getSeguroVehicularCalculoValue());
+        setRegistroFieldValue('regSegVehCosto', solicitud?.costoSeguroVehicular || getCostoSeguroVehicularCalculoValue());
         setRegistroFieldValue('regSegDesgravamen', solicitud?.seguroDesgravamen || getSeguroDesgravamenCalculoValue());
         setRegistroFieldValue('regSegDesgProd', solicitud?.tipoSeguroDesgravamen || getTipoSeguroDesgravamenCalculoValue());
         updateTipoSeguroDesgravamenSolicitudVisibility();
@@ -1216,6 +1384,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 syncTelefonoPoliticasCalculo();
                 syncPrecioVehiculoSimulacionCalculo();
             }
+            refrescarBaselineGuardiaCambiosStageSimulacion();
             window.scrollTo({ top: 0, behavior: 'smooth' });
         });
     });
@@ -1231,6 +1400,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const formattedCorrelativo = String(correlativoCounter++).padStart(3, '0');
         const solicitudId = `EJE${year}${formattedCorrelativo}`;
         currentSolicitudId = solicitudId; // Save in global variable
+        desactivarGuardiaCambiosStageSimulacion();
 
         // Generate timestamp for mock data received (dd-mm-yyyy hh:mm:ss)
         const dd = String(now.getDate()).padStart(2, '0');
@@ -1375,6 +1545,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Regresar button — go back to simulación form
     document.getElementById('btnRegresar').addEventListener('click', () => {
+        desactivarGuardiaCambiosStageSimulacion();
         stageNavigationEnabledForCurrentFlow = false;
         document.querySelectorAll('.module-page').forEach(p => p.classList.remove('active'));
         document.getElementById('moduloSimulacion').classList.add('active');
@@ -1399,11 +1570,14 @@ document.addEventListener('DOMContentLoaded', () => {
         syncPrecioVehiculoSimulacionCalculo();
         document.getElementById('calcResultadoCard').style.display = 'none';
         document.querySelectorAll('#calcCuotasBody tr').forEach(r => r.classList.remove('selected'));
+        limpiarPoliticasCalculoSinSeleccion();
         updateContinuarDesdeCalculoState();
+        refrescarBaselineGuardiaCambiosStageSimulacion();
         window.scrollTo({ top: 0, behavior: 'smooth' });
     });
 
     function continuarARegistroSolicitud() {
+        desactivarGuardiaCambiosStageSimulacion();
         const idSolicitud = document.getElementById('resSolicitudId').textContent;
         const { tipoDoc, nroDoc } = getResultadoDocumento();
 
@@ -1425,8 +1599,11 @@ document.addEventListener('DOMContentLoaded', () => {
             currentSol.gastosRegistrales = calculoSolicitudData.gastosRegistrales;
             currentSol.gastosDelivery = calculoSolicitudData.gastosDelivery;
             currentSol.incluirPortes = calculoSolicitudData.incluirPortes;
+            currentSol.cuotasDobles = calculoSolicitudData.cuotasDobles;
             currentSol.gastosInclGps = calculoSolicitudData.costoGps;
+            currentSol.planGps = calculoSolicitudData.planGps;
             currentSol.seguroVehicular = calculoSolicitudData.seguroVehicular;
+            currentSol.costoSeguroVehicular = calculoSolicitudData.costoSeguroVehicular;
             currentSol.seguroDesgravamen = calculoSolicitudData.seguroDesgravamen;
             currentSol.tipoSeguroDesgravamen = calculoSolicitudData.tipoSeguroDesgravamen;
         }
@@ -1461,9 +1638,10 @@ document.addEventListener('DOMContentLoaded', () => {
         document.getElementById('regProvincia').innerHTML = '<option value="" disabled selected>Seleccionar</option>';
         document.getElementById('regDistrito').innerHTML = '<option value="" disabled selected>Seleccionar</option>';
         document.getElementById('regEstadoCivil').value = "";
-        document.getElementById('regSeparacionBienes').value = "";
-        document.getElementById('regSeparacionBienes').disabled = true;
-        document.getElementById('regSeparacionBienes').classList.add('disabled');
+        const regMancomunaIngresosReset = document.getElementById('regMancomunaIngresos');
+        if (regMancomunaIngresosReset) regMancomunaIngresosReset.value = "";
+        actualizarVisibilidadMancomunaIngresos();
+        actualizarVisibilidadSeparacionBienes();
         aplicarConyugeSolicitudDesdeSimulacion(currentSol);
 
         // Reset Datos Laborales
@@ -1477,6 +1655,7 @@ document.addEventListener('DOMContentLoaded', () => {
         document.getElementById('regMonedaIngreso').value = "PEN";
         document.getElementById('regIngresoNeto').value = "S/ 0.00";
         resetIngresosSection();
+        resetIngresosSection('conyuge');
         actualizarVisibilidadIngresosSolicitud(carreteraActual);
 
         // Pre-populate Vehiculo
@@ -1507,19 +1686,13 @@ document.addEventListener('DOMContentLoaded', () => {
         setRegistroFieldValue('regGastosNotariales', calculoSolicitudData.gastosNotariales);
         setRegistroFieldValue('regGastosRegistrales', calculoSolicitudData.gastosRegistrales);
         setRegistroFieldValue('regGastosDelivery', calculoSolicitudData.gastosDelivery);
-        setRegistroFieldValue('regPlanGpx', "Premium");
+        setRegistroFieldValue('regPlanGpx', calculoSolicitudData.planGps);
         setRegistroFieldValue('regGastosInclGpx', calculoSolicitudData.costoGps);
-        setRegistroFieldValue('regKitMantenimiento', "No");
-        setRegistroFieldValue('regCuotasDobles', "No");
+        setRegistroFieldValue('regCuotasDobles', calculoSolicitudData.cuotasDobles);
         setRegistroFieldValue('regIncluirPortes', calculoSolicitudData.incluirPortes);
 
         // Pre-populate Seguros con los valores ingresados en Cálculo
         aplicarSegurosSolicitudDesdeCalculo(currentSol);
-        setRegistroFieldValue('regSegVehCosto', "S/ 1,200.00");
-        setRegistroFieldValue('regSegDesgCosto', "$ 0.00");
-        setRegistroFieldValue('regSegOptativo', "No");
-        setRegistroFieldValue('regSegOptCosto', "NO");
-        setRegistroFieldValue('regSegOptTipo', "");
 
         if (currentSol) {
             currentSol.registroEditableData = collectRegistroEditableData();
@@ -1529,6 +1702,7 @@ document.addEventListener('DOMContentLoaded', () => {
         applyRegistrationFormReadOnlyState(false);
         lockDatosClienteYConyugeRiesgosObservado(currentSol || { etapa: 'SOLICITUD', estado: 'PENDIENTE' });
         lockEstadoVehiculoNuevo();
+        applySolicitudPreviousScreenFieldsLock(currentSol || { etapa: 'SOLICITUD', estado: 'PENDIENTE' });
         attachedDocs = [];
         renderChecklistTable();
         actualizarChecklistPorCarretera(carreteraActual);
@@ -1603,7 +1777,7 @@ document.addEventListener('DOMContentLoaded', () => {
         return {
             carretera: tipo,
             documentos: ['Copia de DNI ambas caras.'],
-            verificacion: 'No aplicable'
+            verificacion: 'No aplica'
         };
     }
 
@@ -1630,9 +1804,35 @@ document.addEventListener('DOMContentLoaded', () => {
         return reglas;
     }
 
+    function limpiarPoliticasCalculoSinSeleccion() {
+        const calcCarretera = document.getElementById('calcCarretera');
+        const calcDocumentos = document.getElementById('calcDocumentos');
+        const calcVerificacion = document.getElementById('calcVerificacion');
+
+        if (calcCarretera) {
+            calcCarretera.textContent = '-';
+            calcCarretera.classList.remove(
+                'carretera-badge',
+                'carretera-express',
+                'carretera-escritorio',
+                'carretera-semifull',
+                'carretera-full',
+                'tag-express',
+                'tag-full'
+            );
+        }
+        if (calcDocumentos) calcDocumentos.textContent = '-';
+        if (calcVerificacion) calcVerificacion.textContent = '-';
+    }
+
     function actualizarCarreteraPorCapacidadSeleccionada(filaSeleccionada, carreteraBase = 'EXPRESS') {
-        const noCumpleCapacidad = filaSeleccionada?.dataset?.capacidadCumple === 'NO';
-        actualizarPoliticasPorCarretera(noCumpleCapacidad ? 'FULL' : carreteraBase);
+        if (!filaSeleccionada) {
+            limpiarPoliticasCalculoSinSeleccion();
+            return null;
+        }
+        const cumpleCapacidad = filaSeleccionada?.dataset?.capacidadCumple === 'SI';
+        const carreteraResultado = cumpleCapacidad ? 'EXPRESS' : 'FULL';
+        return actualizarPoliticasPorCarretera(carreteraResultado);
     }
 
     function getCarreteraActual() {
@@ -1640,23 +1840,62 @@ document.addEventListener('DOMContentLoaded', () => {
         return normalizarCarretera(calcCarretera?.textContent || currentCarretera || 'EXPRESS');
     }
 
+    function esEstadoCivilConIngresosConyuge(estadoCivil = null) {
+        const estado = String(estadoCivil ?? document.getElementById('regEstadoCivil')?.value ?? '')
+            .trim()
+            .toUpperCase();
+        return estado === 'CASADO' || estado === 'CONVIVIENTE';
+    }
+
+    function esMancomunaIngresosSi() {
+        const valorMancomuna = String(document.getElementById('regMancomunaIngresos')?.value || '')
+            .trim()
+            .toUpperCase();
+        return valorMancomuna === 'SI';
+    }
+
+    function actualizarVisibilidadMancomunaIngresos() {
+        const mancomunaGroup = document.getElementById('regMancomunaIngresosGroup');
+        const mancomunaSelect = document.getElementById('regMancomunaIngresos');
+        if (!mancomunaGroup) return;
+
+        const mostrarMancomuna = esEstadoCivilConIngresosConyuge();
+        mancomunaGroup.style.display = mostrarMancomuna ? '' : 'none';
+        mancomunaGroup.hidden = !mostrarMancomuna;
+        if (!mostrarMancomuna && mancomunaSelect) {
+            mancomunaSelect.value = '';
+        }
+    }
+
     function actualizarVisibilidadIngresosSolicitud(carretera = null) {
         const ingresosCard = document.getElementById('ingresosCard');
-        if (!ingresosCard) return;
+        const ingresosConyugeCard = document.getElementById('ingresosConyugeCard');
 
         const carreteraSolicitud = normalizarCarretera(
             carretera || document.getElementById('regCartera')?.textContent || currentCarretera || 'EXPRESS'
         );
         const mostrarIngresos = carreteraSolicitud === 'FULL';
+        const mostrarIngresosConyuge = mostrarIngresos && esEstadoCivilConIngresosConyuge() && esMancomunaIngresosSi();
 
-        ingresosCard.style.display = mostrarIngresos ? '' : 'none';
-        ingresosCard.hidden = !mostrarIngresos;
+        if (ingresosCard) {
+            ingresosCard.style.display = mostrarIngresos ? '' : 'none';
+            ingresosCard.hidden = !mostrarIngresos;
+        }
+
+        if (ingresosConyugeCard) {
+            ingresosConyugeCard.style.display = mostrarIngresosConyuge ? '' : 'none';
+            ingresosConyugeCard.hidden = !mostrarIngresosConyuge;
+        }
+
+        updateTotalIngresosCombinado();
     }
 
-    aplicarEstiloCarretera(document.getElementById('calcCarretera'), currentCarretera);
+    limpiarPoliticasCalculoSinSeleccion();
     aplicarEstiloCarretera(document.getElementById('regCartera'), currentCarretera);
     aplicarEstiloCarretera(document.getElementById('regChecklistCarteraTag'), currentCarretera);
-    actualizarVisibilidadIngresosSolicitud(currentCarretera);
+    actualizarVisibilidadMancomunaIngresos();
+    // Se ejecuta al final de la inicialización, después de declarar INGRESOS_CONFIG,
+    // para evitar detener la carga del JS antes de enlazar el botón Calcular.
 
     function actualizarChecklistPorCarretera(carretera) {
         const reglas = getReglasCarretera(carretera);
@@ -1768,6 +2007,38 @@ document.addEventListener('DOMContentLoaded', () => {
         return cuotaMaxima;
     }
 
+    function ocultarResultadoCalculoPorCambioParametros() {
+        const calcResultadoCard = document.getElementById('calcResultadoCard');
+        const calcCuotasBody = document.getElementById('calcCuotasBody');
+        if (!calcResultadoCard || !tieneFilaCalculoSeleccionada()) return;
+
+        calcResultadoCard.style.display = 'none';
+        if (calcCuotasBody) calcCuotasBody.innerHTML = '';
+        limpiarPoliticasCalculoSinSeleccion();
+        updateContinuarDesdeCalculoState();
+    }
+
+    function configurarOcultarResultadoCalculoAlCambiarParametros() {
+        const calculoCard = document.querySelector('#tabCalculo .calculo-card');
+        const tabCalculoContent = document.getElementById('tabCalculo');
+        if (!calculoCard || !tabCalculoContent) return;
+
+        const handler = (event) => {
+            const control = event.target;
+            if (!tabCalculoContent.classList.contains('active')) return;
+            if (!control || !control.matches('input, select, textarea')) return;
+            if (control.type === 'hidden' || control.readOnly || control.disabled) return;
+            if (!tieneFilaCalculoSeleccionada()) return;
+
+            ocultarResultadoCalculoPorCambioParametros();
+        };
+
+        calculoCard.addEventListener('input', handler, true);
+        calculoCard.addEventListener('change', handler, true);
+    }
+
+    configurarOcultarResultadoCalculoAlCambiarParametros();
+
     function recalcularResultadoCalculo(mostrarToast = true) {
         validarCuotaInicialContraPrecio(false);
         const tea = parseMoneyValue(document.getElementById('calcTea').value) / 100;
@@ -1792,7 +2063,6 @@ document.addEventListener('DOMContentLoaded', () => {
         const cuotaMensualMaxima = actualizarCapacidadCuotaMaximaCalculo(false);
         const plazos = [plazoSeleccionado];
         const tbody = document.getElementById('calcCuotasBody');
-        const teniaFilaSeleccionada = !!document.querySelector('#calcCuotasBody tr.selected');
         tbody.innerHTML = '';
 
         plazos.forEach(plazo => {
@@ -1815,19 +2085,10 @@ document.addEventListener('DOMContentLoaded', () => {
                 actualizarCarreteraPorCapacidadSeleccionada(tr, carreteraBaseCalculo);
                 updateContinuarDesdeCalculoState();
             });
-            if (teniaFilaSeleccionada) {
-                tr.classList.add('selected');
-                actualizarCarreteraPorCapacidadSeleccionada(tr, carreteraBaseCalculo);
-            }
             tbody.appendChild(tr);
         });
 
-        const filaSeleccionada = document.querySelector('#calcCuotasBody tr.selected');
-        if (filaSeleccionada) {
-            actualizarCarreteraPorCapacidadSeleccionada(filaSeleccionada, carreteraBaseCalculo);
-        } else {
-            actualizarPoliticasPorCarretera(carreteraBaseCalculo);
-        }
+        limpiarPoliticasCalculoSinSeleccion();
         document.getElementById('calcResultadoCard').style.display = 'block';
         updateContinuarDesdeCalculoState();
         if (mostrarToast) {
@@ -1957,7 +2218,7 @@ document.addEventListener('DOMContentLoaded', () => {
         });
 
         calcPorcentajeSeguroVehicularInput.addEventListener('blur', (e) => {
-            e.target.value = formatearPorcentaje(e.target.value);
+            e.target.value = formatMoneyValue(parseMoneyValue(e.target.value), 'S/');
         });
     }
 
@@ -2067,21 +2328,52 @@ document.addEventListener('DOMContentLoaded', () => {
     // Estado civil changes -> toggle separación de bienes
     const regEstadoCivil = document.getElementById('regEstadoCivil');
     const regSeparacionBienes = document.getElementById('regSeparacionBienes');
+
+    function actualizarVisibilidadSeparacionBienes() {
+        const estadoCivilControl = document.getElementById('regEstadoCivil');
+        const separacionGroup = document.getElementById('regSeparacionBienesGroup');
+        const separacionControl = document.getElementById('regSeparacionBienes');
+        if (!estadoCivilControl || !separacionControl) return;
+
+        const mostrarSeparacion = estadoCivilControl.value === 'CASADO';
+        if (separacionGroup) {
+            separacionGroup.style.display = mostrarSeparacion ? '' : 'none';
+        }
+
+        if (mostrarSeparacion) {
+            separacionControl.disabled = false;
+            separacionControl.classList.remove('disabled');
+        } else {
+            separacionControl.value = '';
+            separacionControl.disabled = true;
+            separacionControl.classList.add('disabled');
+        }
+    }
+
     regEstadoCivil.addEventListener('change', () => {
         const regConyugeCard = document.getElementById('regConyugeCard');
-        if (regEstadoCivil.value === 'CASADO') {
-            regSeparacionBienes.disabled = false;
-            regSeparacionBienes.classList.remove('disabled');
+        const estadoCivilConConyuge = esEstadoCivilConIngresosConyuge(regEstadoCivil.value);
+
+        actualizarVisibilidadSeparacionBienes();
+
+        if (estadoCivilConConyuge) {
             if (regConyugeCard) regConyugeCard.style.display = 'block';
             const regConTipoDoc = document.getElementById('regConTipoDoc');
             if (regConTipoDoc && !regConTipoDoc.value) regConTipoDoc.value = 'DNI';
         } else {
-            regSeparacionBienes.disabled = true;
-            regSeparacionBienes.classList.add('disabled');
-            regSeparacionBienes.value = '';
             limpiarConyugeSolicitud();
         }
+
+        actualizarVisibilidadMancomunaIngresos();
+        actualizarVisibilidadIngresosSolicitud();
     });
+
+    const regMancomunaIngresos = document.getElementById('regMancomunaIngresos');
+    if (regMancomunaIngresos) {
+        regMancomunaIngresos.addEventListener('change', () => {
+            actualizarVisibilidadIngresosSolicitud();
+        });
+    }
 
     const regVehNroDocVendedor = document.getElementById('regVehNroDocVendedor');
     if (regVehNroDocVendedor) {
@@ -2292,7 +2584,7 @@ document.addEventListener('DOMContentLoaded', () => {
             'regTipoDoc', 'regNroDoc', 'regNombres', 'regApePaterno', 'regApeMaterno',
             'regFechaNac', 'regCelular', 'regCorreo', 'regSexo', 'regNacionalidad',
             'regResidencia', 'regDireccion', 'regDepartamento', 'regProvincia', 'regDistrito',
-            'regEstadoCivil', 'regSeparacionBienes', 'stickyRegTipoDoc', 'stickyRegNroDoc',
+            'regEstadoCivil', 'regMancomunaIngresos', 'regSeparacionBienes', 'stickyRegTipoDoc', 'stickyRegNroDoc',
             'stickyRegNombres', 'stickyRegApePaterno'
         ];
 
@@ -3754,7 +4046,9 @@ document.addEventListener('DOMContentLoaded', () => {
             existingSol.registroEditableData = collectRegistroEditableData();
             existingSol.gastosRegistrales = document.getElementById('regGastosRegistrales')?.value || existingSol.gastosRegistrales;
             existingSol.gastosDelivery = document.getElementById('regGastosDelivery')?.value || existingSol.gastosDelivery;
+            existingSol.cuotasDobles = document.getElementById('regCuotasDobles')?.value || existingSol.cuotasDobles;
             existingSol.seguroVehicular = document.getElementById('regSegVehicular')?.value || existingSol.seguroVehicular;
+            existingSol.costoSeguroVehicular = document.getElementById('regSegVehCosto')?.value || existingSol.costoSeguroVehicular;
             existingSol.seguroDesgravamen = document.getElementById('regSegDesgravamen')?.value || existingSol.seguroDesgravamen;
             existingSol.tipoSeguroDesgravamen = document.getElementById('regSegDesgProd')?.value || existingSol.tipoSeguroDesgravamen;
             if (esReenvioPorObservacionRiesgos) {
@@ -3795,7 +4089,9 @@ document.addEventListener('DOMContentLoaded', () => {
                 registroEditableData: collectRegistroEditableData(),
                 gastosRegistrales: document.getElementById('regGastosRegistrales')?.value || 'S/ 0.00',
                 gastosDelivery: document.getElementById('regGastosDelivery')?.value || 'S/ 0.00',
+                cuotasDobles: document.getElementById('regCuotasDobles')?.value || 'No',
                 seguroVehicular: document.getElementById('regSegVehicular')?.value || getSeguroVehicularCalculoValue(),
+                costoSeguroVehicular: document.getElementById('regSegVehCosto')?.value || getCostoSeguroVehicularCalculoValue(),
                 seguroDesgravamen: document.getElementById('regSegDesgravamen')?.value || getSeguroDesgravamenCalculoValue(),
                 tipoSeguroDesgravamen: document.getElementById('regSegDesgProd')?.value || getTipoSeguroDesgravamenCalculoValue()
             };
@@ -4285,16 +4581,62 @@ document.addEventListener('DOMContentLoaded', () => {
     setupSolicitudSolesInput('regGastosRegistrales');
     setupSolicitudSolesInput('regGastosDelivery');
 
-    function updateTotalIngresos() {
-        const totalEl = document.getElementById('totalIngresosTitular');
-        if (!totalEl) return;
-        const total = Array.from(document.querySelectorAll('#ingresosList .ingreso-monto'))
-            .reduce((sum, input) => sum + parseCurrencyValue(input.value), 0);
-        totalEl.textContent = formatSoles(total);
+    const INGRESOS_CONFIG = {
+        titular: {
+            listSelector: '#ingresosList',
+            totalId: 'totalIngresosTitular',
+            addButtonId: 'btnAgregarIngreso'
+        },
+        conyuge: {
+            listSelector: '#ingresosConyugeList',
+            totalId: 'totalIngresosConyuge',
+            addButtonId: 'btnAgregarIngresoConyuge'
+        }
+    };
+
+    function getIngresosConfig(tipo = 'titular') {
+        return INGRESOS_CONFIG[tipo] || INGRESOS_CONFIG.titular;
     }
 
-    function refreshIngresoLabels() {
-        document.querySelectorAll('#ingresosList .ingreso-item').forEach((item, index) => {
+    function getTotalIngresosFor(tipo = 'titular') {
+        const config = getIngresosConfig(tipo);
+        const list = document.querySelector(config.listSelector);
+        if (!list) return 0;
+
+        return Array.from(list.querySelectorAll('.ingreso-monto'))
+            .reduce((sum, input) => sum + parseCurrencyValue(input.value), 0);
+    }
+
+    function updateTotalIngresosCombinado() {
+        const totalCombinadoEl = document.getElementById('totalIngresosCombinado');
+        if (!totalCombinadoEl) return;
+
+        const totalTitular = getTotalIngresosFor('titular');
+        const totalConyuge = getTotalIngresosFor('conyuge');
+        totalCombinadoEl.textContent = formatSoles(totalTitular + totalConyuge);
+    }
+
+    function updateTotalIngresosFor(tipo = 'titular') {
+        const config = getIngresosConfig(tipo);
+        const totalEl = document.getElementById(config.totalId);
+        const list = document.querySelector(config.listSelector);
+        if (!totalEl || !list) return;
+
+        const total = getTotalIngresosFor(tipo);
+        totalEl.textContent = formatSoles(total);
+        updateTotalIngresosCombinado();
+    }
+
+    function updateTotalIngresos() {
+        updateTotalIngresosFor('titular');
+    }
+
+    function refreshIngresoLabels(tipo = 'titular') {
+        const config = getIngresosConfig(tipo);
+        const list = document.querySelector(config.listSelector);
+        if (!list) return;
+
+        list.querySelectorAll('.ingreso-item').forEach((item, index) => {
             item.dataset.ingresoIndex = String(index + 1);
             const badge = item.querySelector('.ingreso-badge');
             if (badge) badge.textContent = `Ingreso ${index + 1}`;
@@ -4303,8 +4645,9 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    function createIngresoItem(index) {
-        const firstItem = document.querySelector('#ingresosList .ingreso-item');
+    function createIngresoItem(index, tipo = 'titular') {
+        const config = getIngresosConfig(tipo);
+        const firstItem = document.querySelector(`${config.listSelector} .ingreso-item`);
         if (!firstItem) return null;
         const item = firstItem.cloneNode(true);
         item.dataset.ingresoIndex = String(index);
@@ -4332,8 +4675,9 @@ document.addEventListener('DOMContentLoaded', () => {
         return item;
     }
 
-    function resetIngresosSection() {
-        const list = document.getElementById('ingresosList');
+    function resetIngresosSection(tipo = 'titular') {
+        const config = getIngresosConfig(tipo);
+        const list = document.querySelector(config.listSelector);
         if (!list) return;
         const firstItem = list.querySelector('.ingreso-item');
         if (!firstItem) return;
@@ -4353,22 +4697,25 @@ document.addEventListener('DOMContentLoaded', () => {
         });
         let removeBtn = firstItem.querySelector('.btn-remove-ingreso');
         if (removeBtn) removeBtn.style.display = 'none';
-        refreshIngresoLabels();
-        updateTotalIngresos();
+        refreshIngresoLabels(tipo);
+        updateTotalIngresosFor(tipo);
     }
 
-    const btnAgregarIngreso = document.getElementById('btnAgregarIngreso');
-    const ingresosList = document.getElementById('ingresosList');
+    function setupIngresosList(tipo = 'titular') {
+        const config = getIngresosConfig(tipo);
+        const btnAgregarIngreso = document.getElementById(config.addButtonId);
+        const ingresosList = document.querySelector(config.listSelector);
 
-    if (btnAgregarIngreso && ingresosList) {
+        if (!btnAgregarIngreso || !ingresosList) return;
+
         btnAgregarIngreso.addEventListener('click', () => {
             if (isSolicitudReadOnly) return;
             const nextIndex = ingresosList.querySelectorAll('.ingreso-item').length + 1;
-            const newItem = createIngresoItem(nextIndex);
+            const newItem = createIngresoItem(nextIndex, tipo);
             if (newItem) {
                 ingresosList.appendChild(newItem);
-                refreshIngresoLabels();
-                updateTotalIngresos();
+                refreshIngresoLabels(tipo);
+                updateTotalIngresosFor(tipo);
             }
         });
 
@@ -4377,14 +4724,14 @@ document.addEventListener('DOMContentLoaded', () => {
                 event.target.value = event.target.value.replace(/\D/g, '');
             }
             if (event.target.classList.contains('ingreso-monto')) {
-                updateTotalIngresos();
+                updateTotalIngresosFor(tipo);
             }
         });
 
         ingresosList.addEventListener('blur', (event) => {
             if (event.target.classList.contains('ingreso-monto')) {
                 event.target.value = formatSoles(parseCurrencyValue(event.target.value));
-                updateTotalIngresos();
+                updateTotalIngresosFor(tipo);
             }
         }, true);
 
@@ -4394,11 +4741,14 @@ document.addEventListener('DOMContentLoaded', () => {
             const item = removeBtn.closest('.ingreso-item');
             if (item && ingresosList.querySelectorAll('.ingreso-item').length > 1) {
                 item.remove();
-                refreshIngresoLabels();
-                updateTotalIngresos();
+                refreshIngresoLabels(tipo);
+                updateTotalIngresosFor(tipo);
             }
         });
     }
+
+    setupIngresosList('titular');
+    setupIngresosList('conyuge');
 
 
     const REGISTRO_EDITABLE_SECTION_FIELDS = {
@@ -4414,13 +4764,88 @@ document.addEventListener('DOMContentLoaded', () => {
         ],
         gastos: [
             'regGastosNotariales', 'regGastosRegistrales', 'regGastosDelivery', 'regPlanGpx',
-            'regGastosInclGpx', 'regKitMantenimiento', 'regCuotasDobles', 'regIncluirPortes'
+            'regGastosInclGpx', 'regIncluirPortes'
         ],
         seguros: [
-            'regSegVehicular', 'regSegVehCosto', 'regSegDesgravamen', 'regSegDesgProd', 'regSegDesgCosto',
-            'regSegOptativo', 'regSegOptCosto', 'regSegOptTipo'
+            'regSegVehicular', 'regSegVehCosto', 'regSegDesgravamen', 'regSegDesgProd'
         ]
     };
+
+
+    const SOLICITUD_PREVIOUS_SCREEN_FIELD_IDS = [
+        // Datos provenientes de Simulación / Evaluación preliminar
+        'regTipoDoc', 'regNroDoc', 'regNombres', 'regApePaterno', 'regApeMaterno',
+        'regFechaNac', 'stickyRegTipoDoc', 'stickyRegNroDoc',
+        'stickyRegNombres', 'stickyRegApePaterno',
+
+        // Datos del cónyuge capturados desde Simulación
+        'regConTipoDoc', 'regConNroDoc',
+
+        // Datos heredados de Simulación
+        'regVehEstado', 'regVehConcesionario', 'regVehTienda',
+
+        // Datos provenientes de Cálculo
+        'regSimProducto', 'regSimCampana', 'regSimMoneda', 'regSimTipoCambio', 'regSimPrecioVeh',
+        'regSimCuotaInicial', 'regSimTea', 'regSimPlazo', 'regSimDiaPago', 'regTotalFinanciamiento',
+        'regGastosNotariales', 'regGastosRegistrales', 'regGastosDelivery', 'regPlanGpx',
+        'regGastosInclGpx', 'regCuotasDobles', 'regIncluirPortes',
+        'regSegVehicular', 'regSegVehCosto', 'regSegDesgravamen', 'regSegDesgProd'
+    ];
+
+    function isSolicitudPendiente(solicitud) {
+        return normalizarEtapa(solicitud?.etapa) === 'SOLICITUD'
+            && normalizarEtapa(solicitud?.estado) === 'PENDIENTE';
+    }
+
+    function setSolicitudPreviousFieldLocked(field, locked) {
+        if (!field) return;
+
+        if (locked) {
+            if (field.dataset.solicitudPreviousLock !== 'true') {
+                field.dataset.prevDisabledSolicitudPrevious = String(field.disabled);
+                field.dataset.prevReadonlySolicitudPrevious = String(field.hasAttribute('readonly'));
+                field.dataset.prevDisabledClassSolicitudPrevious = String(field.classList.contains('disabled'));
+                field.dataset.prevReadonlyClassSolicitudPrevious = String(field.classList.contains('is-readonly'));
+                field.dataset.solicitudPreviousLock = 'true';
+            }
+
+            field.disabled = true;
+            field.setAttribute('aria-disabled', 'true');
+            if (field.tagName !== 'SELECT') field.setAttribute('readonly', 'readonly');
+            field.classList.add('disabled', 'is-readonly');
+            return;
+        }
+
+        if (field.dataset.solicitudPreviousLock !== 'true') return;
+
+        field.disabled = field.dataset.prevDisabledSolicitudPrevious === 'true';
+        if (field.dataset.prevReadonlySolicitudPrevious === 'true') {
+            field.setAttribute('readonly', 'readonly');
+        } else {
+            field.removeAttribute('readonly');
+        }
+        field.classList.toggle('disabled', field.dataset.prevDisabledClassSolicitudPrevious === 'true');
+        field.classList.toggle('is-readonly', field.dataset.prevReadonlyClassSolicitudPrevious === 'true');
+        if (field.disabled) {
+            field.setAttribute('aria-disabled', 'true');
+        } else {
+            field.removeAttribute('aria-disabled');
+        }
+
+        delete field.dataset.solicitudPreviousLock;
+        delete field.dataset.prevDisabledSolicitudPrevious;
+        delete field.dataset.prevReadonlySolicitudPrevious;
+        delete field.dataset.prevDisabledClassSolicitudPrevious;
+        delete field.dataset.prevReadonlyClassSolicitudPrevious;
+    }
+
+    function applySolicitudPreviousScreenFieldsLock(solicitud) {
+        const shouldLock = isSolicitudPendiente(solicitud);
+        SOLICITUD_PREVIOUS_SCREEN_FIELD_IDS.forEach(id => {
+            setSolicitudPreviousFieldLocked(document.getElementById(id), shouldLock);
+        });
+        syncRegistroStickyClientFields();
+    }
 
     function setRegistroFieldValue(id, value) {
         const field = document.getElementById(id);
@@ -4449,8 +4874,12 @@ document.addEventListener('DOMContentLoaded', () => {
         Object.entries(data).forEach(([id, value]) => setRegistroFieldValue(id, value));
     }
 
-    function collectIngresosData() {
-        return Array.from(document.querySelectorAll('#ingresosList .ingreso-item')).map(item => ({
+    function collectIngresosData(tipo = 'titular') {
+        const config = getIngresosConfig(tipo);
+        const list = document.querySelector(config.listSelector);
+        if (!list) return [];
+
+        return Array.from(list.querySelectorAll('.ingreso-item')).map(item => ({
             categoria: item.querySelector('.ingreso-categoria')?.value || '',
             perfil: item.querySelector('.ingreso-perfil')?.value || '',
             situacion: item.querySelector('.ingreso-situacion')?.value || '',
@@ -4476,26 +4905,29 @@ document.addEventListener('DOMContentLoaded', () => {
         setValue('.ingreso-anualizado', data.anualizado || 'NO');
     }
 
-    function applyIngresosData(ingresos = []) {
-        const list = document.getElementById('ingresosList');
+    function applyIngresosData(ingresos = [], tipo = 'titular') {
+        const config = getIngresosConfig(tipo);
+        const list = document.querySelector(config.listSelector);
         if (!list) return;
-        resetIngresosSection();
+        resetIngresosSection(tipo);
         const dataList = Array.isArray(ingresos) && ingresos.length ? ingresos : [];
         dataList.forEach((data, index) => {
             let item = list.querySelectorAll('.ingreso-item')[index];
             if (!item && index > 0) {
-                item = createIngresoItem(index + 1);
+                item = createIngresoItem(index + 1, tipo);
                 if (item) list.appendChild(item);
             }
             if (item) setIngresoItemData(item, data);
         });
-        refreshIngresoLabels();
-        updateTotalIngresos();
+        refreshIngresoLabels(tipo);
+        updateTotalIngresosFor(tipo);
     }
 
     function collectRegistroEditableData() {
         return {
+            cliente: getRegistroFieldValues(['regEstadoCivil', 'regMancomunaIngresos', 'regSeparacionBienes']),
             ingresos: collectIngresosData(),
+            ingresosConyuge: collectIngresosData('conyuge'),
             vehiculo: getRegistroFieldValues(REGISTRO_EDITABLE_SECTION_FIELDS.vehiculo),
             credito: getRegistroFieldValues(REGISTRO_EDITABLE_SECTION_FIELDS.credito),
             gastos: getRegistroFieldValues(REGISTRO_EDITABLE_SECTION_FIELDS.gastos),
@@ -4506,7 +4938,15 @@ document.addEventListener('DOMContentLoaded', () => {
     function applyRegistroEditableData(solicitud) {
         const data = solicitud?.registroEditableData;
         if (!data) return;
+        if (data.cliente) {
+            setRegistroFieldValues(data.cliente);
+            const regEstadoCivilControl = document.getElementById('regEstadoCivil');
+            if (regEstadoCivilControl) regEstadoCivilControl.dispatchEvent(new Event('change'));
+        } else {
+            actualizarVisibilidadMancomunaIngresos();
+        }
         if (Array.isArray(data.ingresos)) applyIngresosData(data.ingresos);
+        if (Array.isArray(data.ingresosConyuge)) applyIngresosData(data.ingresosConyuge, 'conyuge');
         setRegistroFieldValues(data.vehiculo || {});
         actualizarDatosTerceroPropiedad(false);
         setRegistroFieldValues(data.credito || {});
@@ -4514,12 +4954,13 @@ document.addEventListener('DOMContentLoaded', () => {
         setRegistroFieldValues(data.seguros || {});
         updateTipoSeguroDesgravamenSolicitudVisibility();
         actualizarVisibilidadIngresosSolicitud();
-        updateTotalIngresos();
+        updateTotalIngresosFor('titular');
+        updateTotalIngresosFor('conyuge');
     }
 
     function enableObservedEditableControls(solicitud) {
         if (!isRiesgosObservadoEditableSolicitud(solicitud)) return;
-        document.querySelectorAll('#ingresosCard input, #ingresosCard select').forEach(control => {
+        document.querySelectorAll('#ingresosCard input, #ingresosCard select, #ingresosConyugeCard input, #ingresosConyugeCard select').forEach(control => {
             control.disabled = false;
         });
         Object.values(REGISTRO_EDITABLE_SECTION_FIELDS).flat().forEach(id => {
@@ -4754,9 +5195,10 @@ document.addEventListener('DOMContentLoaded', () => {
             document.getElementById('regProvincia').innerHTML = '<option value="" disabled selected>Seleccionar</option>';
             document.getElementById('regDistrito').innerHTML = '<option value="" disabled selected>Seleccionar</option>';
             document.getElementById('regEstadoCivil').value = "";
-            document.getElementById('regSeparacionBienes').value = "";
-            document.getElementById('regSeparacionBienes').disabled = true;
-            document.getElementById('regSeparacionBienes').classList.add('disabled');
+            const regMancomunaIngresosReset = document.getElementById('regMancomunaIngresos');
+            if (regMancomunaIngresosReset) regMancomunaIngresosReset.value = "";
+            actualizarVisibilidadMancomunaIngresos();
+            actualizarVisibilidadSeparacionBienes();
             aplicarConyugeSolicitud(solicitud.conyuge);
 
             // Reset Laborales
@@ -4770,6 +5212,7 @@ document.addEventListener('DOMContentLoaded', () => {
             document.getElementById('regMonedaIngreso').value = "PEN";
             document.getElementById('regIngresoNeto').value = "S/ 0.00";
             resetIngresosSection();
+            resetIngresosSection('conyuge');
             actualizarVisibilidadIngresosSolicitud(carreteraSolicitud);
 
             // Pre-populate Vehiculo using Concesionario/Tienda from the solicitation
@@ -4799,20 +5242,14 @@ document.addEventListener('DOMContentLoaded', () => {
             setRegistroFieldValue('regGastosNotariales', solicitud.gastosNotariales || "SI");
             setRegistroFieldValue('regGastosRegistrales', solicitud.gastosRegistrales || "SI");
             setRegistroFieldValue('regGastosDelivery', solicitud.gastosDelivery || "SI");
-            setRegistroFieldValue('regPlanGpx', "Premium");
+            setRegistroFieldValue('regPlanGpx', solicitud.planGps || "Premium");
             setRegistroFieldValue('regGastosInclGpx', solicitud.gastosInclGps || "$ 650.00");
-            setRegistroFieldValue('regKitMantenimiento', "No");
-            setRegistroFieldValue('regCuotasDobles', "No");
+            setRegistroFieldValue('regCuotasDobles', solicitud.cuotasDobles || "No");
             setRegistroFieldValue('regIncluirPortes', solicitud.incluirPortes || "No");
             setRegistroFieldValue('regTotalFinanciamiento', solicitud.totalFinanciamiento || 'S/ 21,480.00');
 
             // Pre-populate Seguros
             aplicarSegurosSolicitudDesdeCalculo(solicitud);
-            setRegistroFieldValue('regSegVehCosto', "S/ 1,200.00");
-            setRegistroFieldValue('regSegDesgCosto', "$ 0.00");
-            setRegistroFieldValue('regSegOptativo', "No");
-            setRegistroFieldValue('regSegOptCosto', "NO");
-            setRegistroFieldValue('regSegOptTipo', "");
 
             applyRegistroEditableData(solicitud);
             enableObservedEditableControls(solicitud);
@@ -4837,6 +5274,7 @@ document.addEventListener('DOMContentLoaded', () => {
             actualizarChecklistPorCarretera(carreteraSolicitud);
             actualizarVisibilidadIngresosSolicitud(carreteraSolicitud);
             enableObservedEditableControls(solicitud);
+            applySolicitudPreviousScreenFieldsLock(solicitud);
 
             // Set checkboxes checks
             if (isReadOnly) {
@@ -5280,6 +5718,8 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function closeModal() {
+        restaurarCambioStageSimulacionPendiente();
+        limpiarConfirmacionCambioStageSimulacionHandler();
         limpiarConfirmacionSimulacionCancelHandler();
         modalOverlay.classList.remove('active');
         document.body.style.overflow = '';
@@ -5347,6 +5787,9 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     resetIngresosSection();
+    resetIngresosSection('conyuge');
+    actualizarVisibilidadMancomunaIngresos();
+    actualizarVisibilidadIngresosSolicitud();
 
     // ============================
     // INITIAL RENDER

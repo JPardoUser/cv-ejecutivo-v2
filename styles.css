@@ -3563,6 +3563,17 @@ select.form-control {
     gap: 10px;
 }
 
+
+.ingresos-conyuge-section {
+    margin-top: 16px;
+}
+
+.ingresos-section-desc {
+    font-size: 0.76rem;
+    color: var(--text-muted);
+    margin: -4px 0 12px;
+}
+
 .ingreso-item {
     padding: 12px;
     border-radius: var(--radius-md);

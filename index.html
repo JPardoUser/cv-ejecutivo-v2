@@ -443,8 +443,8 @@
                                     </select>
                                 </div>
                                 <div class="form-group">
-                                    <label class="form-label" for="calcPorcentajeSeguroVehicular">Tasa anual del seguro</label>
-                                    <input type="text" class="form-control" id="calcPorcentajeSeguroVehicular" value="0.00%" placeholder="00.00%" inputmode="decimal">
+                                    <label class="form-label" for="calcPorcentajeSeguroVehicular">Costo Seguro Vehicular</label>
+                                    <input type="text" class="form-control" id="calcPorcentajeSeguroVehicular" value="S/ 0.00" placeholder="S/ 0.00" inputmode="decimal">
                                 </div>
                                 <div class="form-group">
                                     <label class="form-label" for="calcDesgravamen">Seguro de desgravamen</label>
@@ -520,6 +520,13 @@
                                         <option value="NO" selected>No</option>
                                     </select>
                                 </div>
+                                <div class="form-group">
+                                    <label class="form-label" for="calcCuotasDobles">Cuotas Dobles</label>
+                                    <select class="form-control" id="calcCuotasDobles">
+                                        <option value="No" selected>No</option>
+                                        <option value="Si">Si</option>
+                                    </select>
+                                </div>
                             </div>
                         </section>
 
@@ -581,15 +588,15 @@
                     <div class="calculo-politicas">
                         <div class="policy-card">
                             <span class="policy-label">Carretera aplicable según política de Riesgos</span>
-                            <strong id="calcCarretera" class="carretera-badge carretera-express">EXPRESS</strong>
+                            <strong id="calcCarretera">-</strong>
                         </div>
                         <div class="policy-card">
                             <span class="policy-label">Documentos requeridos según la carretera resultante</span>
-                            <strong id="calcDocumentos">Copia de DNI ambas caras.</strong>
+                            <strong id="calcDocumentos">-</strong>
                         </div>
                         <div class="policy-card">
                             <span class="policy-label">Verificación aplicable según política de Riesgos</span>
-                            <strong id="calcVerificacion">No aplicable</strong>
+                            <strong id="calcVerificacion">-</strong>
                         </div>
                     </div>
                 </div>
@@ -749,7 +756,16 @@
                             </select>
                         </div>
 
-                        <div class="form-group w-25">
+                        <div class="form-group w-25" id="regMancomunaIngresosGroup" style="display: none;">
+                            <label class="form-label">Mancomuna ingresos</label>
+                            <select class="form-control select-arrow" id="regMancomunaIngresos">
+                                <option value="" disabled selected>Seleccionar</option>
+                                <option value="SI">Sí</option>
+                                <option value="NO">No</option>
+                            </select>
+                        </div>
+
+                        <div class="form-group w-25" id="regSeparacionBienesGroup" style="display: none;">
                             <label class="form-label">Separación de bienes</label>
                             <select class="form-control select-arrow disabled" id="regSeparacionBienes" disabled>
                                 <option value="" disabled selected>Seleccionar</option>
@@ -942,6 +958,88 @@
                         <div class="ingresos-total-row">
                             <span>Total ingresos titular:</span>
                             <strong id="totalIngresosTitular">S/ 0.00</strong>
+                        </div>
+                    </div>
+
+
+                    <!-- 3.1 INGRESOS CONYUGUE -->
+                    <div class="ingresos-section ingresos-conyuge-section" id="ingresosConyugeCard" style="display: none;">
+                        <h4 class="ingresos-title">INGRESOS DEL CONYUGUE</h4>
+                        <p class="ingresos-section-desc">Registra los ingresos declarados por el cónyuge o conviviente. Puedes añadir más de un ingreso.</p>
+                        <div class="ingresos-list" id="ingresosConyugeList">
+                            <div class="ingreso-item" data-ingreso-index="1">
+                                <div class="ingreso-item-header">
+                                    <span class="ingreso-badge">Ingreso 1</span>
+                                </div>
+                                <div class="form-grid ingresos-grid">
+                                    <div class="form-group w-25">
+                                        <label class="form-label">Tipo de categoría</label>
+                                        <select class="form-control select-arrow ingreso-categoria">
+                                            <option value="" disabled selected>Seleccionar</option>
+                                            <option value="1RA">1ra categoría</option>
+                                            <option value="2DA">2da categoría</option>
+                                            <option value="3RA">3ra categoría</option>
+                                            <option value="4TA">4ta categoría</option>
+                                            <option value="5TA">5ta categoría</option>
+                                        </select>
+                                    </div>
+                                    <div class="form-group w-25">
+                                        <label class="form-label">Perfil</label>
+                                        <select class="form-control select-arrow ingreso-perfil">
+                                            <option value="" disabled selected>Seleccionar</option>
+                                            <option value="FORMAL">Formal</option>
+                                            <option value="INFORMAL">Informal</option>
+                                        </select>
+                                    </div>
+                                    <div class="form-group w-25">
+                                        <label class="form-label">Situación laboral</label>
+                                        <select class="form-control select-arrow ingreso-situacion">
+                                            <option value="" disabled selected>Seleccionar</option>
+                                            <option value="DEPENDIENTE">Dependiente</option>
+                                            <option value="INDEPENDIENTE">Independiente</option>
+                                        </select>
+                                    </div>
+                                    <div class="form-group w-25">
+                                        <label class="form-label">Fecha de ingreso laboral</label>
+                                        <div class="date-input-wrapper">
+                                            <input type="text" class="form-control ingreso-fecha" placeholder="dd / mm / aaaa">
+                                            <span class="material-icons-outlined date-icon">calendar_today</span>
+                                        </div>
+                                    </div>
+                                    <div class="form-group w-25">
+                                        <label class="form-label">RUC del empleador</label>
+                                        <input type="text" class="form-control ingreso-ruc" placeholder="RUC de 11 dígitos" maxlength="11">
+                                    </div>
+                                    <div class="form-group w-25">
+                                        <label class="form-label">Ingreso neto mensual</label>
+                                        <input type="text" class="form-control ingreso-monto" value="S/ 0.00">
+                                    </div>
+                                    <div class="form-group w-25">
+                                        <label class="form-label">¿Ingreso anualizado?</label>
+                                        <select class="form-control select-arrow ingreso-anualizado">
+                                            <option value="NO" selected>No</option>
+                                            <option value="SI">Sí</option>
+                                        </select>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="ingresos-actions">
+                            <button type="button" class="btn btn-secondary" id="btnAgregarIngresoConyuge">
+                                <span class="material-icons-outlined">add</span>
+                                Añadir ingreso
+                            </button>
+                        </div>
+
+                        <div class="ingresos-total-row">
+                            <span>Total ingresos conyugue:</span>
+                            <strong id="totalIngresosConyuge">S/ 0.00</strong>
+                        </div>
+
+                        <div class="ingresos-total-row" id="totalIngresosCombinadoRow">
+                            <span>Total ingresos titular + conyugue:</span>
+                            <strong id="totalIngresosCombinado">S/ 0.00</strong>
                         </div>
                     </div>
                 </div>
@@ -1157,15 +1255,8 @@
                             <input type="text" class="form-control disabled" id="regGastosInclGpx" value="$ 650.00" readonly>
                         </div>
                         <div class="form-group w-25">
-                            <label class="form-label">Kit Mantenimiento prepagado</label>
-                            <select class="form-control select-arrow" id="regKitMantenimiento">
-                                <option value="No" selected>No</option>
-                                <option value="Si">Si</option>
-                            </select>
-                        </div>
-                        <div class="form-group w-25">
                             <label class="form-label">Cuotas Dobles</label>
-                            <select class="form-control select-arrow" id="regCuotasDobles">
+                            <select class="form-control select-arrow disabled is-readonly" id="regCuotasDobles" disabled aria-disabled="true">
                                 <option value="No" selected>No</option>
                                 <option value="Si">Si</option>
                             </select>
@@ -1195,7 +1286,7 @@
                         </div>
                         <div class="form-group w-25">
                             <label class="form-label">Costo Seguro Vehicular</label>
-                            <input type="text" class="form-control" id="regSegVehCosto" value="S/ 1,200.00">
+                            <input type="text" class="form-control disabled" id="regSegVehCosto" value="S/ 1,200.00" readonly>
                         </div>
                         <div class="form-group w-25">
                             <label class="form-label">Seguro Desgravamen</label>
@@ -1213,32 +1304,6 @@
                             </select>
                         </div>
 
-                        <div class="form-group w-25">
-                            <label class="form-label">Costo Seguro Desgravamen (cálculo)</label>
-                            <input type="text" class="form-control disabled" id="regSegDesgCosto" value="$ 0.00" readonly>
-                        </div>
-                        <div class="form-group w-25">
-                            <label class="form-label">Seguro Optativo</label>
-                            <select class="form-control select-arrow" id="regSegOptativo">
-                                <option value="No" selected>No</option>
-                                <option value="Si">Si</option>
-                            </select>
-                        </div>
-                        <div class="form-group w-25">
-                            <label class="form-label">COSTO Seguro Optativo</label>
-                            <select class="form-control select-arrow" id="regSegOptCosto">
-                                <option value="NO" selected>NO</option>
-                                <option value="SI">SI</option>
-                            </select>
-                        </div>
-                        <div class="form-group w-25">
-                            <label class="form-label">TIPO SEGURO OPTATIVO</label>
-                            <select class="form-control select-arrow" id="regSegOptTipo">
-                                <option value="" disabled selected>Seleccionar</option>
-                                <option value="VIDA">Seguro de Vida</option>
-                                <option value="DESEMPLEO">Seguro de Desempleo</option>
-                            </select>
-                        </div>
                     </div>
                 </div>
 
