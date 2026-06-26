@@ -889,6 +889,10 @@ select.form-control {
     cursor: not-allowed;
 }
 
+.btn-simular:disabled {
+    pointer-events: none;
+}
+
 .btn-simular.enabled {
     background: var(--primary-blue);
     color: var(--text-white);

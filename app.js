@@ -333,7 +333,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const calcCuotaMaxima = document.getElementById('calcCuotaMaxima');
         if (calcCuotaMaxima) calcCuotaMaxima.value = `S/ ${mockData.capacidadCuotaMaxima}`;
         if (solicitud.precioVehiculoUsd && simPrecioVehiculoUsd) {
-            simPrecioVehiculoUsd.value = formatearDecimal(solicitud.precioVehiculoUsd);
+            simPrecioVehiculoUsd.value = formatearDecimalConMiles(solicitud.precioVehiculoUsd);
             syncPrecioVehiculoSimulacionCalculo();
         }
 
@@ -641,6 +641,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     regPlanGpx: 'Premium',
                     regGastosInclGpx: 'S/ 650.00',
                     regCuotasDobles: 'No',
+                    regMesesCuotasDobles: '',
                     regIncluirPortes: 'Si'
                 },
                 seguros: {
@@ -802,36 +803,113 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
-    // Validate form to enable/disable Simular button
+    let simulacionValidationAttempted = false;
+
+    function validarDocumentoPrincipalSimulacion(tipoDoc, docValue) {
+        const valor = String(docValue || '').trim();
+        if (tipoDoc === 'DNI') return /^\d{8}$/.test(valor);
+        if (tipoDoc === 'CE') return /^\d{6,12}$/.test(valor);
+        if (tipoDoc === 'RUC') return /^\d{11}$/.test(valor);
+        if (tipoDoc === 'PASAPORTE') return valor.length >= 5;
+        return false;
+    }
+
+    function validarDocumentoConyugeSimulacion(tipoDoc, docValue) {
+        const valor = String(docValue || '').trim();
+        if (tipoDoc === 'DNI') return /^\d{8}$/.test(valor);
+        if (tipoDoc === 'CE') return /^\d{1,12}$/.test(valor);
+        return false;
+    }
+
+    function getTipoDocConyugeControl() {
+        return document.getElementById('tipoDocConyuge');
+    }
+
+    function getNroDocConyugeControl() {
+        return document.getElementById('nroDocConyuge');
+    }
+
+    function actualizarRestriccionesDocumentoConyuge() {
+        const tipoDocConyuge = getTipoDocConyugeControl();
+        const nroDocConyuge = getNroDocConyugeControl();
+        if (!tipoDocConyuge || !nroDocConyuge) return;
+        const maxLength = tipoDocConyuge.value === 'CE' ? 12 : 8;
+        nroDocConyuge.maxLength = maxLength;
+        nroDocConyuge.value = nroDocConyuge.value.replace(/\D/g, '').slice(0, maxLength);
+    }
+
+    function limpiarHighlightRequeridoSimulacion(field) {
+        if (!field) return;
+        field.classList.remove('input-attention');
+        field.removeAttribute('aria-invalid');
+        const group = field.closest('.form-group, .simulacion-header-field');
+        if (group) group.classList.remove('field-attention');
+    }
+
+    function marcarCampoRequeridoSimulacion(field) {
+        if (!field) return;
+        field.classList.remove('input-attention');
+        void field.offsetWidth;
+        field.classList.add('input-attention');
+        field.setAttribute('aria-invalid', 'true');
+        const group = field.closest('.form-group, .simulacion-header-field');
+        if (group) group.classList.add('field-attention');
+    }
+
+    function getCamposRequeridosFaltantesSimulacion() {
+        const missingFields = [];
+        const docValue = nroDocumento ? nroDocumento.value.trim() : '';
+        const tipoDoc = tipoDocumento ? tipoDocumento.value : 'DNI';
+        const precioVehiculo = simPrecioVehiculoUsd ? parseMoneyValue(simPrecioVehiculoUsd.value) : 0;
+
+        if (!validarDocumentoPrincipalSimulacion(tipoDoc, docValue)) missingFields.push(nroDocumento);
+        if (precioVehiculo <= 0) missingFields.push(simPrecioVehiculoUsd);
+
+        if (toggleConyuge && toggleConyuge.checked) {
+            const tipoDocConyuge = getTipoDocConyugeControl();
+            const nroDocConyuge = getNroDocConyugeControl();
+            if (!tipoDocConyuge || !tipoDocConyuge.value) missingFields.push(tipoDocConyuge);
+            if (!validarDocumentoConyugeSimulacion(tipoDocConyuge ? tipoDocConyuge.value : 'DNI', nroDocConyuge ? nroDocConyuge.value : '')) {
+                missingFields.push(nroDocConyuge);
+            }
+        }
+
+        return missingFields.filter(Boolean);
+    }
+
+    function actualizarHighlightsRequeridosSimulacion() {
+        const watchedFields = [
+            nroDocumento,
+            simPrecioVehiculoUsd,
+            getTipoDocConyugeControl(),
+            getNroDocConyugeControl()
+        ].filter(Boolean);
+        const missingFields = getCamposRequeridosFaltantesSimulacion();
+
+        watchedFields.forEach(field => {
+            if (missingFields.includes(field) && simulacionValidationAttempted) {
+                marcarCampoRequeridoSimulacion(field);
+            } else {
+                limpiarHighlightRequeridoSimulacion(field);
+            }
+        });
+
+        return missingFields;
+    }
+
+    function resaltarCamposFaltantesSimulacion() {
+        simulacionValidationAttempted = true;
+        const missingFields = actualizarHighlightsRequeridosSimulacion();
+        if (missingFields.length) {
+            missingFields[0].focus({ preventScroll: true });
+            missingFields[0].scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
+        return missingFields.length === 0;
+    }
+
     function validateSimulacionForm() {
-        const docValue = nroDocumento.value.trim();
-        const tipoDoc = tipoDocumento.value;
-        let isValid = false;
-
-        if (tipoDoc === 'DNI' && docValue.length === 8 && /^\d+$/.test(docValue)) {
-            isValid = true;
-        } else if (tipoDoc === 'CE' && docValue.length >= 6) {
-            isValid = true;
-        } else if (tipoDoc === 'RUC' && docValue.length === 11 && /^\d+$/.test(docValue)) {
-            isValid = true;
-        } else if (tipoDoc === 'PASAPORTE' && docValue.length >= 5) {
-            isValid = true;
-        }
-
-        if (isValid) {
-            const precioVehiculo = simPrecioVehiculoUsd ? parseMoneyValue(simPrecioVehiculoUsd.value) : 0;
-            if (precioVehiculo <= 0) {
-                isValid = false;
-            }
-        }
-
-        // If cónyuge is active, also validate cónyuge DNI
-        if (isValid && toggleConyuge.checked) {
-            const conyugeDoc = document.getElementById('nroDocConyuge').value.trim();
-            if (!/^\d{8}$/.test(conyugeDoc)) {
-                isValid = false;
-            }
-        }
+        actualizarRestriccionesDocumentoConyuge();
+        const isValid = getCamposRequeridosFaltantesSimulacion().length === 0;
 
         if (isValid) {
             btnSimular.disabled = false;
@@ -840,19 +918,35 @@ document.addEventListener('DOMContentLoaded', () => {
             btnSimular.disabled = true;
             btnSimular.classList.remove('enabled');
         }
+
+        actualizarHighlightsRequeridosSimulacion();
+        return isValid;
     }
 
     nroDocumento.addEventListener('input', validateSimulacionForm);
     tipoDocumento.addEventListener('change', validateSimulacionForm);
 
-    // Also listen on cónyuge document field
-    document.getElementById('nroDocConyuge').addEventListener('input', (e) => {
-        e.target.value = e.target.value.replace(/\D/g, '');
-        validateSimulacionForm();
-    });
+    const tipoDocConyugeControl = getTipoDocConyugeControl();
+    const nroDocConyugeControl = getNroDocConyugeControl();
+
+    if (nroDocConyugeControl) {
+        nroDocConyugeControl.addEventListener('input', (e) => {
+            actualizarRestriccionesDocumentoConyuge();
+            validateSimulacionForm();
+        });
+    }
+
+    if (tipoDocConyugeControl) {
+        tipoDocConyugeControl.addEventListener('change', () => {
+            actualizarRestriccionesDocumentoConyuge();
+            validateSimulacionForm();
+        });
+    }
+
     toggleConyuge.addEventListener('change', () => {
         setTimeout(validateSimulacionForm, 100);
     });
+    actualizarRestriccionesDocumentoConyuge();
 
     // Restrict DNI input to numbers only
     nroDocumento.addEventListener('input', (e) => {
@@ -884,9 +978,22 @@ document.addEventListener('DOMContentLoaded', () => {
             validateSimulacionForm();
         });
         simPrecioVehiculoUsd.addEventListener('blur', (e) => {
-            e.target.value = formatearDecimal(e.target.value);
+            e.target.value = formatearDecimalConMiles(e.target.value);
             syncPrecioVehiculoSimulacionCalculo();
             validateSimulacionForm();
+        });
+    }
+
+    const simularActions = btnSimular ? btnSimular.closest('.form-footer-actions') : null;
+    if (simularActions) {
+        simularActions.addEventListener('click', (event) => {
+            if (!btnSimular || !btnSimular.disabled) return;
+            const rect = btnSimular.getBoundingClientRect();
+            const clickInsideBtnSimular = event.clientX >= rect.left && event.clientX <= rect.right
+                && event.clientY >= rect.top && event.clientY <= rect.bottom;
+            if (!clickInsideBtnSimular) return;
+            event.preventDefault();
+            resaltarCamposFaltantesSimulacion();
         });
     }
 
@@ -975,6 +1082,10 @@ document.addEventListener('DOMContentLoaded', () => {
     function getCalculoSolicitudData() {
         const monedaPrecio = getMonedaPrecioCalculoSymbol();
         const plazoMeses = getControlValue('calcPlazoSeleccionado', '24');
+        const cuotasDobles = normalizeSiNoForSolicitud(getControlValue('calcCuotasDobles', 'No'));
+        const mesesCuotasDobles = cuotasDobles === 'Si'
+            ? getControlValue('calcMesesCuotasDobles', 'Agosto / Enero')
+            : '';
 
         return {
             tipoCambio: getTipoCambioCalculoValue(),
@@ -987,7 +1098,8 @@ document.addEventListener('DOMContentLoaded', () => {
             gastosRegistrales: normalizeSiNoForSolicitud(getControlValue('calcRegistral', 'SI'), true),
             gastosDelivery: normalizeSiNoForSolicitud(getControlValue('calcTomaFirmas', 'SI'), true),
             incluirPortes: normalizeSiNoForSolicitud(getControlValue('calcPortes', 'NO')),
-            cuotasDobles: normalizeSiNoForSolicitud(getControlValue('calcCuotasDobles', 'No')),
+            cuotasDobles,
+            mesesCuotasDobles,
             costoGps: getCalculoMoneyValue('calcCostoGps', '$'),
             planGps: getPlanGpsSolicitudDesdeCalculo(),
             seguroVehicular: getSeguroVehicularCalculoValue(),
@@ -998,19 +1110,20 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function getSeguroVehicularCalculoValue() {
-        return getSelectTextValue('calcTipoSeguroVehicular', 'Banco');
+        return getSelectTextValue('calcTipoSeguroVehicular', 'Con seguro');
     }
 
     function getCostoSeguroVehicularCalculoValue() {
-        return getCalculoMoneyValue('calcPorcentajeSeguroVehicular', 'S/');
+        return formatearPorcentaje(getControlValue('calcPorcentajeSeguroVehicular', '0'));
     }
 
     function getSeguroDesgravamenCalculoValue() {
         const calcDesgravamen = document.getElementById('calcDesgravamen');
-        const value = calcDesgravamen ? String(calcDesgravamen.value || '').trim().toUpperCase() : '';
-        if (value === 'ENDOSO') return 'ENDOSO';
-        if (value === 'NO') return 'NO';
-        return 'SI';
+        if (!calcDesgravamen) return 'Con seguro';
+        const selectedOption = calcDesgravamen.options && calcDesgravamen.selectedIndex >= 0
+            ? calcDesgravamen.options[calcDesgravamen.selectedIndex]
+            : null;
+        return selectedOption ? String(selectedOption.textContent || '').trim() : 'Con seguro';
     }
 
     function getTipoSeguroDesgravamenCalculoValue() {
@@ -1023,7 +1136,9 @@ document.addEventListener('DOMContentLoaded', () => {
         const calcDesgravamen = document.getElementById('calcDesgravamen');
         const tipoGroup = document.getElementById('calcTipoSeguroDesgravamenGroup');
         const tipoSelect = document.getElementById('calcTipoSeguroDesgravamen');
-        const habilitarTipo = String(calcDesgravamen?.value || '').trim().toUpperCase() === 'SI';
+        const desgravamenValue = String(calcDesgravamen?.value || '').trim().toUpperCase();
+        const desgravamenText = String(calcDesgravamen?.options?.[calcDesgravamen?.selectedIndex]?.textContent || '').trim().toUpperCase();
+        const habilitarTipo = desgravamenValue === 'SI' || desgravamenValue === 'CON_SEGURO' || desgravamenText === 'CON SEGURO';
 
         if (tipoGroup) {
             tipoGroup.classList.toggle('is-hidden', !habilitarTipo);
@@ -1038,7 +1153,9 @@ document.addEventListener('DOMContentLoaded', () => {
         const regSegDesgravamen = document.getElementById('regSegDesgravamen');
         const tipoGroup = document.getElementById('regTipoSeguroDesgravamenGroup');
         const tipoSelect = document.getElementById('regSegDesgProd');
-        const habilitarTipo = String(regSegDesgravamen?.value || '').trim().toUpperCase() === 'SI';
+        const desgravamenValue = String(regSegDesgravamen?.value || '').trim().toUpperCase();
+        const desgravamenText = String(regSegDesgravamen?.options?.[regSegDesgravamen?.selectedIndex]?.textContent || '').trim().toUpperCase();
+        const habilitarTipo = desgravamenValue === 'SI' || desgravamenValue === 'CON_SEGURO' || desgravamenText === 'CON SEGURO';
 
         if (tipoGroup) {
             tipoGroup.classList.toggle('is-hidden', !habilitarTipo);
@@ -1154,7 +1271,10 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Simular button — show confirmation before navigating to Resultado
     btnSimular.addEventListener('click', () => {
-        if (btnSimular.disabled) return;
+        if (btnSimular.disabled) {
+            resaltarCamposFaltantesSimulacion();
+            return;
+        }
         mostrarConfirmacionSimulacion();
     });
 
@@ -1430,7 +1550,7 @@ document.addEventListener('DOMContentLoaded', () => {
             etapa: 'SIMULACIÓN',
             estado: 'PENDIENTE',
             telefono: nroTelefono.value.trim() || '922159933',
-            precioVehiculoUsd: formatearDecimal(simPrecioVehiculoUsd?.value || '0'),
+            precioVehiculoUsd: formatearDecimalConMiles(simPrecioVehiculoUsd?.value || '0'),
             habilitarNavegacionEtapas: true
         };
         solicitudes.unshift(newSimSol);
@@ -1600,6 +1720,7 @@ document.addEventListener('DOMContentLoaded', () => {
             currentSol.gastosDelivery = calculoSolicitudData.gastosDelivery;
             currentSol.incluirPortes = calculoSolicitudData.incluirPortes;
             currentSol.cuotasDobles = calculoSolicitudData.cuotasDobles;
+            currentSol.mesesCuotasDobles = calculoSolicitudData.mesesCuotasDobles;
             currentSol.gastosInclGps = calculoSolicitudData.costoGps;
             currentSol.planGps = calculoSolicitudData.planGps;
             currentSol.seguroVehicular = calculoSolicitudData.seguroVehicular;
@@ -1689,6 +1810,8 @@ document.addEventListener('DOMContentLoaded', () => {
         setRegistroFieldValue('regPlanGpx', calculoSolicitudData.planGps);
         setRegistroFieldValue('regGastosInclGpx', calculoSolicitudData.costoGps);
         setRegistroFieldValue('regCuotasDobles', calculoSolicitudData.cuotasDobles);
+        setRegistroFieldValue('regMesesCuotasDobles', calculoSolicitudData.mesesCuotasDobles);
+        actualizarVisibilidadMesesCuotasDoblesSolicitud();
         setRegistroFieldValue('regIncluirPortes', calculoSolicitudData.incluirPortes);
 
         // Pre-populate Seguros con los valores ingresados en Cálculo
@@ -1831,7 +1954,8 @@ document.addEventListener('DOMContentLoaded', () => {
             return null;
         }
         const cumpleCapacidad = filaSeleccionada?.dataset?.capacidadCumple === 'SI';
-        const carreteraResultado = cumpleCapacidad ? 'EXPRESS' : 'FULL';
+        const carreteraBaseNormalizada = normalizarCarretera(filaSeleccionada?.dataset?.carreteraBase || carreteraBase);
+        const carreteraResultado = carreteraBaseNormalizada === 'FULL' ? 'FULL' : (cumpleCapacidad ? 'EXPRESS' : 'FULL');
         return actualizarPoliticasPorCarretera(carreteraResultado);
     }
 
@@ -2057,7 +2181,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (calcMontoFinanciar) calcMontoFinanciar.value = formatMoneyValue(montoFinanciar, 'S/');
 
         const { ingresoEstimado, ingresoDeclarado, ingresoBase } = obtenerBaseIngresoCalculo();
-        const carreteraBaseCalculo = ingresoDeclarado > ingresoEstimado ? 'FULL' : 'EXPRESS';
+        const carreteraBaseCalculo = ingresoDeclarado > 0 ? 'FULL' : 'EXPRESS';
         const tasaMensual = Math.pow(1 + tea, 1 / 12) - 1;
         const plazoSeleccionado = parseInt(document.getElementById('calcPlazoSeleccionado').value, 10) || 24;
         const cuotaMensualMaxima = actualizarCapacidadCuotaMaximaCalculo(false);
@@ -2114,19 +2238,41 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function normalizarDecimalInput(value) {
-        let normalizedValue = String(value || '').replace(/,/g, '.').replace(/[^\d.]/g, '');
-        const firstDotIndex = normalizedValue.indexOf('.');
-        if (firstDotIndex !== -1) {
-            normalizedValue = normalizedValue.slice(0, firstDotIndex + 1) + normalizedValue.slice(firstDotIndex + 1).replace(/\./g, '');
-            const [integerPart, decimalPart = ''] = normalizedValue.split('.');
-            normalizedValue = `${integerPart}.${decimalPart.slice(0, 2)}`;
+        const rawValue = String(value || '').replace(/[^\d.,]/g, '');
+        if (!rawValue) return '';
+
+        const lastDotIndex = rawValue.lastIndexOf('.');
+        const lastCommaIndex = rawValue.lastIndexOf(',');
+        let decimalSeparatorIndex = -1;
+
+        if (lastDotIndex !== -1 && lastCommaIndex !== -1) {
+            decimalSeparatorIndex = Math.max(lastDotIndex, lastCommaIndex);
+        } else if (lastDotIndex !== -1) {
+            decimalSeparatorIndex = lastDotIndex;
+        } else if (lastCommaIndex !== -1) {
+            const decimalsCandidate = rawValue.slice(lastCommaIndex + 1).replace(/\D/g, '');
+            decimalSeparatorIndex = decimalsCandidate.length > 0 && decimalsCandidate.length <= 2 ? lastCommaIndex : -1;
         }
-        return normalizedValue;
+
+        if (decimalSeparatorIndex !== -1) {
+            const integerPart = rawValue.slice(0, decimalSeparatorIndex).replace(/\D/g, '');
+            const decimalPart = rawValue.slice(decimalSeparatorIndex + 1).replace(/\D/g, '').slice(0, 2);
+            return `${integerPart || '0'}.${decimalPart}`;
+        }
+
+        return rawValue.replace(/\D/g, '');
     }
 
     function formatearDecimal(value) {
         const parsedValue = Number.parseFloat(normalizarDecimalInput(value));
         return Number.isFinite(parsedValue) ? parsedValue.toFixed(2) : '0.00';
+    }
+
+    function formatearDecimalConMiles(value) {
+        const parsedValue = Number.parseFloat(normalizarDecimalInput(value));
+        return Number.isFinite(parsedValue)
+            ? parsedValue.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+            : '0.00';
     }
 
     function formatearPorcentaje(value) {
@@ -2194,6 +2340,8 @@ document.addEventListener('DOMContentLoaded', () => {
             calcTipoGpsGroup.style.display = mostrarTipoGps ? '' : 'none';
         }
 
+        calcCostoGps.readOnly = !mostrarTipoGps;
+
         if (!mostrarTipoGps) {
             calcCostoGps.value = '00.00';
         }
@@ -2211,6 +2359,43 @@ document.addEventListener('DOMContentLoaded', () => {
     }
     aplicarCostoGpsSegunSeleccion();
 
+    function actualizarMesesCuotasDobles() {
+        const calcCuotasDobles = document.getElementById('calcCuotasDobles');
+        const calcMesesCuotasDoblesGroup = document.getElementById('calcMesesCuotasDoblesGroup');
+        const calcMesesCuotasDobles = document.getElementById('calcMesesCuotasDobles');
+        if (!calcCuotasDobles || !calcMesesCuotasDoblesGroup || !calcMesesCuotasDobles) return;
+
+        const mostrarMeses = String(calcCuotasDobles.value || '').trim().toUpperCase() === 'SI';
+        calcMesesCuotasDoblesGroup.style.display = mostrarMeses ? '' : 'none';
+        calcMesesCuotasDobles.value = 'Agosto / Enero';
+        calcMesesCuotasDobles.readOnly = true;
+    }
+
+    function actualizarVisibilidadMesesCuotasDoblesSolicitud() {
+        const regCuotasDobles = document.getElementById('regCuotasDobles');
+        const regMesesCuotasDoblesGroup = document.getElementById('regMesesCuotasDoblesGroup');
+        const regMesesCuotasDobles = document.getElementById('regMesesCuotasDobles');
+        if (!regCuotasDobles || !regMesesCuotasDoblesGroup || !regMesesCuotasDobles) return;
+
+        const mostrarMeses = String(regCuotasDobles.value || '').trim().toUpperCase() === 'SI';
+        regMesesCuotasDoblesGroup.style.display = mostrarMeses ? '' : 'none';
+        if (mostrarMeses && !String(regMesesCuotasDobles.value || '').trim()) {
+            regMesesCuotasDobles.value = 'Agosto / Enero';
+        }
+    }
+
+    const calcCuotasDoblesControl = document.getElementById('calcCuotasDobles');
+    if (calcCuotasDoblesControl) {
+        calcCuotasDoblesControl.addEventListener('change', actualizarMesesCuotasDobles);
+    }
+    actualizarMesesCuotasDobles();
+
+    const regCuotasDoblesControl = document.getElementById('regCuotasDobles');
+    if (regCuotasDoblesControl) {
+        regCuotasDoblesControl.addEventListener('change', actualizarVisibilidadMesesCuotasDoblesSolicitud);
+    }
+    actualizarVisibilidadMesesCuotasDoblesSolicitud();
+
     const calcPorcentajeSeguroVehicularInput = document.getElementById('calcPorcentajeSeguroVehicular');
     if (calcPorcentajeSeguroVehicularInput) {
         calcPorcentajeSeguroVehicularInput.addEventListener('input', (e) => {
@@ -2218,8 +2403,19 @@ document.addEventListener('DOMContentLoaded', () => {
         });
 
         calcPorcentajeSeguroVehicularInput.addEventListener('blur', (e) => {
-            e.target.value = formatMoneyValue(parseMoneyValue(e.target.value), 'S/');
+            e.target.value = formatearPorcentaje(e.target.value);
         });
+    }
+
+    function actualizarEstadoCostoSeguroVehicular() {
+        const tipoSeguroVehicular = document.getElementById('calcTipoSeguroVehicular');
+        const costoSeguroVehicular = document.getElementById('calcPorcentajeSeguroVehicular');
+        if (!tipoSeguroVehicular || !costoSeguroVehicular) return;
+
+        const esEndosado = String(tipoSeguroVehicular.value || '').trim().toUpperCase() === 'ENDOSADO';
+        costoSeguroVehicular.readOnly = esEndosado;
+        costoSeguroVehicular.classList.toggle('disabled', esEndosado);
+        costoSeguroVehicular.classList.toggle('is-readonly', esEndosado);
     }
 
     const calcDesgravamenControl = document.getElementById('calcDesgravamen');
@@ -2233,8 +2429,13 @@ document.addEventListener('DOMContentLoaded', () => {
     ['calcTipoSeguroVehicular', 'calcTipoSeguroDesgravamen'].forEach(id => {
         const control = document.getElementById(id);
         if (!control) return;
-        control.addEventListener('change', () => aplicarSegurosSolicitudDesdeCalculo());
+        control.addEventListener('change', () => {
+            if (id === 'calcTipoSeguroVehicular') actualizarEstadoCostoSeguroVehicular();
+            aplicarSegurosSolicitudDesdeCalculo();
+        });
     });
+
+    actualizarEstadoCostoSeguroVehicular();
 
     const regSegDesgravamenControl = document.getElementById('regSegDesgravamen');
     if (regSegDesgravamenControl) {
@@ -4047,6 +4248,7 @@ document.addEventListener('DOMContentLoaded', () => {
             existingSol.gastosRegistrales = document.getElementById('regGastosRegistrales')?.value || existingSol.gastosRegistrales;
             existingSol.gastosDelivery = document.getElementById('regGastosDelivery')?.value || existingSol.gastosDelivery;
             existingSol.cuotasDobles = document.getElementById('regCuotasDobles')?.value || existingSol.cuotasDobles;
+            existingSol.mesesCuotasDobles = document.getElementById('regMesesCuotasDobles')?.value || existingSol.mesesCuotasDobles;
             existingSol.seguroVehicular = document.getElementById('regSegVehicular')?.value || existingSol.seguroVehicular;
             existingSol.costoSeguroVehicular = document.getElementById('regSegVehCosto')?.value || existingSol.costoSeguroVehicular;
             existingSol.seguroDesgravamen = document.getElementById('regSegDesgravamen')?.value || existingSol.seguroDesgravamen;
@@ -4090,6 +4292,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 gastosRegistrales: document.getElementById('regGastosRegistrales')?.value || 'S/ 0.00',
                 gastosDelivery: document.getElementById('regGastosDelivery')?.value || 'S/ 0.00',
                 cuotasDobles: document.getElementById('regCuotasDobles')?.value || 'No',
+                mesesCuotasDobles: document.getElementById('regMesesCuotasDobles')?.value || '',
                 seguroVehicular: document.getElementById('regSegVehicular')?.value || getSeguroVehicularCalculoValue(),
                 costoSeguroVehicular: document.getElementById('regSegVehCosto')?.value || getCostoSeguroVehicularCalculoValue(),
                 seguroDesgravamen: document.getElementById('regSegDesgravamen')?.value || getSeguroDesgravamenCalculoValue(),
@@ -4581,6 +4784,8 @@ document.addEventListener('DOMContentLoaded', () => {
     setupSolicitudSolesInput('regGastosRegistrales');
     setupSolicitudSolesInput('regGastosDelivery');
 
+    const MAX_INGRESOS_POR_PERSONA = 2;
+
     const INGRESOS_CONFIG = {
         titular: {
             listSelector: '#ingresosList',
@@ -4631,6 +4836,27 @@ document.addEventListener('DOMContentLoaded', () => {
         updateTotalIngresosFor('titular');
     }
 
+    function updateAgregarIngresoButtonState(tipo = 'titular') {
+        const config = getIngresosConfig(tipo);
+        const btnAgregarIngreso = document.getElementById(config.addButtonId);
+        const list = document.querySelector(config.listSelector);
+        if (!btnAgregarIngreso || !list) return;
+
+        const cantidadIngresos = list.querySelectorAll('.ingreso-item').length;
+        const debeDeshabilitar = isSolicitudReadOnly || cantidadIngresos >= MAX_INGRESOS_POR_PERSONA;
+        btnAgregarIngreso.disabled = debeDeshabilitar;
+        btnAgregarIngreso.classList.toggle('is-disabled', debeDeshabilitar);
+        btnAgregarIngreso.setAttribute('aria-disabled', String(debeDeshabilitar));
+        btnAgregarIngreso.title = cantidadIngresos >= MAX_INGRESOS_POR_PERSONA
+            ? 'Máximo 2 ingresos permitidos'
+            : '';
+    }
+
+    function updateAllAgregarIngresoButtonsState() {
+        updateAgregarIngresoButtonState('titular');
+        updateAgregarIngresoButtonState('conyuge');
+    }
+
     function refreshIngresoLabels(tipo = 'titular') {
         const config = getIngresosConfig(tipo);
         const list = document.querySelector(config.listSelector);
@@ -4643,6 +4869,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const removeBtn = item.querySelector('.btn-remove-ingreso');
             if (removeBtn) removeBtn.style.display = index === 0 ? 'none' : 'inline-flex';
         });
+        updateAgregarIngresoButtonState(tipo);
     }
 
     function createIngresoItem(index, tipo = 'titular') {
@@ -4708,9 +4935,16 @@ document.addEventListener('DOMContentLoaded', () => {
 
         if (!btnAgregarIngreso || !ingresosList) return;
 
+        updateAgregarIngresoButtonState(tipo);
+
         btnAgregarIngreso.addEventListener('click', () => {
             if (isSolicitudReadOnly) return;
-            const nextIndex = ingresosList.querySelectorAll('.ingreso-item').length + 1;
+            const currentCount = ingresosList.querySelectorAll('.ingreso-item').length;
+            if (currentCount >= MAX_INGRESOS_POR_PERSONA) {
+                updateAgregarIngresoButtonState(tipo);
+                return;
+            }
+            const nextIndex = currentCount + 1;
             const newItem = createIngresoItem(nextIndex, tipo);
             if (newItem) {
                 ingresosList.appendChild(newItem);
@@ -4764,7 +4998,7 @@ document.addEventListener('DOMContentLoaded', () => {
         ],
         gastos: [
             'regGastosNotariales', 'regGastosRegistrales', 'regGastosDelivery', 'regPlanGpx',
-            'regGastosInclGpx', 'regIncluirPortes'
+            'regGastosInclGpx', 'regMesesCuotasDobles', 'regIncluirPortes'
         ],
         seguros: [
             'regSegVehicular', 'regSegVehCosto', 'regSegDesgravamen', 'regSegDesgProd'
@@ -4788,7 +5022,7 @@ document.addEventListener('DOMContentLoaded', () => {
         'regSimProducto', 'regSimCampana', 'regSimMoneda', 'regSimTipoCambio', 'regSimPrecioVeh',
         'regSimCuotaInicial', 'regSimTea', 'regSimPlazo', 'regSimDiaPago', 'regTotalFinanciamiento',
         'regGastosNotariales', 'regGastosRegistrales', 'regGastosDelivery', 'regPlanGpx',
-        'regGastosInclGpx', 'regCuotasDobles', 'regIncluirPortes',
+        'regGastosInclGpx', 'regCuotasDobles', 'regMesesCuotasDobles', 'regIncluirPortes',
         'regSegVehicular', 'regSegVehCosto', 'regSegDesgravamen', 'regSegDesgProd'
     ];
 
@@ -4910,7 +5144,9 @@ document.addEventListener('DOMContentLoaded', () => {
         const list = document.querySelector(config.listSelector);
         if (!list) return;
         resetIngresosSection(tipo);
-        const dataList = Array.isArray(ingresos) && ingresos.length ? ingresos : [];
+        const dataList = Array.isArray(ingresos) && ingresos.length
+            ? ingresos.slice(0, MAX_INGRESOS_POR_PERSONA)
+            : [];
         dataList.forEach((data, index) => {
             let item = list.querySelectorAll('.ingreso-item')[index];
             if (!item && index > 0) {
@@ -4951,11 +5187,13 @@ document.addEventListener('DOMContentLoaded', () => {
         actualizarDatosTerceroPropiedad(false);
         setRegistroFieldValues(data.credito || {});
         setRegistroFieldValues(data.gastos || {});
+        actualizarVisibilidadMesesCuotasDoblesSolicitud();
         setRegistroFieldValues(data.seguros || {});
         updateTipoSeguroDesgravamenSolicitudVisibility();
         actualizarVisibilidadIngresosSolicitud();
         updateTotalIngresosFor('titular');
         updateTotalIngresosFor('conyuge');
+        updateAllAgregarIngresoButtonsState();
     }
 
     function enableObservedEditableControls(solicitud) {
@@ -4983,6 +5221,7 @@ document.addEventListener('DOMContentLoaded', () => {
             });
         }
         lockEstadoVehiculoNuevo();
+        updateAllAgregarIngresoButtonsState();
         const btnPasarRiesgos = document.getElementById('btnPasarRiesgos');
         if (btnPasarRiesgos) {
             btnPasarRiesgos.style.display = 'inline-flex';
@@ -5083,6 +5322,7 @@ document.addEventListener('DOMContentLoaded', () => {
         });
         actualizarDatosTerceroPropiedad(false);
         lockEstadoVehiculoNuevo();
+        updateAllAgregarIngresoButtonsState();
     }
 
     // ============================
@@ -5116,7 +5356,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const calcCuotaMaximaReset = document.getElementById('calcCuotaMaxima');
             if (calcCuotaMaximaReset) calcCuotaMaximaReset.value = `S/ ${mockData.capacidadCuotaMaxima}`;
             if (solicitud.precioVehiculoUsd && simPrecioVehiculoUsd) {
-                simPrecioVehiculoUsd.value = formatearDecimal(solicitud.precioVehiculoUsd);
+                simPrecioVehiculoUsd.value = formatearDecimalConMiles(solicitud.precioVehiculoUsd);
                 syncPrecioVehiculoSimulacionCalculo();
             }
             const calcIngresoDeclaradoReset = document.getElementById('calcIngresoDeclarado');
@@ -5245,6 +5485,8 @@ document.addEventListener('DOMContentLoaded', () => {
             setRegistroFieldValue('regPlanGpx', solicitud.planGps || "Premium");
             setRegistroFieldValue('regGastosInclGpx', solicitud.gastosInclGps || "$ 650.00");
             setRegistroFieldValue('regCuotasDobles', solicitud.cuotasDobles || "No");
+            setRegistroFieldValue('regMesesCuotasDobles', solicitud.mesesCuotasDobles || (normalizeSiNoForSolicitud(solicitud.cuotasDobles || 'No') === 'Si' ? 'Agosto / Enero' : ''));
+            actualizarVisibilidadMesesCuotasDoblesSolicitud();
             setRegistroFieldValue('regIncluirPortes', solicitud.incluirPortes || "No");
             setRegistroFieldValue('regTotalFinanciamiento', solicitud.totalFinanciamiento || 'S/ 21,480.00');
 

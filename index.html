@@ -165,11 +165,12 @@
                                         <label class="form-label" for="tipoDocConyuge">Tipo de documento <span class="required">*</span></label>
                                         <select class="form-control" id="tipoDocConyuge" name="tipoDocConyuge">
                                             <option value="DNI" selected>DNI</option>
+                                            <option value="CE">CE</option>
                                         </select>
                                     </div>
                                     <div class="form-group">
                                         <label class="form-label" for="nroDocConyuge">N° de documento <span class="required">*</span></label>
-                                        <input type="text" class="form-control" id="nroDocConyuge" name="nroDocConyuge" placeholder="Ingrese documento" maxlength="8">
+                                        <input type="text" class="form-control" id="nroDocConyuge" name="nroDocConyuge" placeholder="Ingrese documento" maxlength="12" inputmode="numeric" pattern="[0-9]*">
                                     </div>
                                 </div>
                             </div>
@@ -384,13 +385,6 @@
                             <h4>Vehículo / operación</h4>
                             <div class="calculo-grid">
                                 <div class="form-group">
-                                    <label class="form-label" for="calcMonedaPrecio">Moneda del precio</label>
-                                    <select class="form-control" id="calcMonedaPrecio">
-                                        <option value="USD" selected>Dólares</option>
-                                        <option value="PEN">Soles</option>
-                                    </select>
-                                </div>
-                                <div class="form-group">
                                     <label class="form-label" for="calcTipoCambio">Tipo de cambio</label>
                                     <input type="text" class="form-control" id="calcTipoCambio" value="3.78">
                                 </div>
@@ -424,20 +418,20 @@
                                 <div class="form-group">
                                     <label class="form-label" for="calcTipoSeguroVehicular">Tipo de seguro vehicular</label>
                                     <select class="form-control" id="calcTipoSeguroVehicular">
-                                        <option value="BANCO" selected>Banco</option>
-                                        <option value="ENDOSO">Endoso</option>
+                                        <option value="CON_SEGURO" selected>Con seguro</option>
+                                        <option value="ENDOSADO">Endosado</option>
                                     </select>
                                 </div>
                                 <div class="form-group">
-                                    <label class="form-label" for="calcPorcentajeSeguroVehicular">Costo Seguro Vehicular</label>
-                                    <input type="text" class="form-control" id="calcPorcentajeSeguroVehicular" value="S/ 0.00" placeholder="S/ 0.00" inputmode="decimal">
+                                    <label class="form-label" for="calcPorcentajeSeguroVehicular">Porcentaje anual de seguro vehicular (%)</label>
+                                    <input type="text" class="form-control" id="calcPorcentajeSeguroVehicular" value="0.00%" placeholder="0.00%" inputmode="decimal">
                                 </div>
                                 <div class="form-group">
                                     <label class="form-label" for="calcDesgravamen">Seguro de desgravamen</label>
                                     <select class="form-control" id="calcDesgravamen">
-                                        <option value="SI" selected>Sí</option>
-                                        <option value="ENDOSO">Endoso</option>
-                                        <option value="NO">No</option>
+                                        <option value="CON_SEGURO" selected>Con seguro</option>
+                                        <option value="ENDOSADO">Endosado</option>
+                                        <option value="SIN_SEGURO">Sin seguro</option>
                                     </select>
                                 </div>
                                 <div class="form-group desgravamen-type-group" id="calcTipoSeguroDesgravamenGroup">
@@ -457,8 +451,8 @@
                                 <div class="form-group">
                                     <label class="form-label" for="calcGps">GPS</label>
                                     <select class="form-control" id="calcGps">
-                                        <option value="SI" selected>Sí</option>
-                                        <option value="NO">No</option>
+                                        <option value="SI" selected>Con GPS</option>
+                                        <option value="NO">Sin GPS</option>
                                     </select>
                                 </div>
                                 <div class="form-group" id="calcTipoGpsGroup">
@@ -513,6 +507,10 @@
                                         <option value="Si">Si</option>
                                     </select>
                                 </div>
+                                <div class="form-group" id="calcMesesCuotasDoblesGroup" style="display: none;">
+                                    <label class="form-label" for="calcMesesCuotasDobles">Meses de cuotas dobles</label>
+                                    <input type="text" class="form-control" id="calcMesesCuotasDobles" value="Agosto / Enero" readonly>
+                                </div>
                             </div>
                         </section>
 
@@ -527,10 +525,6 @@
                                     <label class="form-label" for="calcIngresoDeclarado">Ingreso declarado (Soles)</label>
                                     <input type="text" class="form-control" id="calcIngresoDeclarado" placeholder="00.00" value="">
                                 </div>
-                                <label class="piloto-check calculo-piloto-inline" for="chkPilotoCondiciones">
-                                    <input type="checkbox" id="chkPilotoCondiciones">
-                                    <span>El caso cumple las condiciones del piloto</span>
-                                </label>
                             </div>
                         </section>
                     </div>
@@ -1260,6 +1254,10 @@
                                 <option value="No" selected>No</option>
                                 <option value="Si">Si</option>
                             </select>
+                        </div>
+                        <div class="form-group w-25" id="regMesesCuotasDoblesGroup" style="display: none;">
+                            <label class="form-label">Meses de cuotas dobles</label>
+                            <input type="text" class="form-control disabled is-readonly" id="regMesesCuotasDobles" value="" readonly disabled aria-disabled="true">
                         </div>
                         <div class="form-group w-25">
                             <label class="form-label">Incluir Portes</label>
