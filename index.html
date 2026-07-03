@@ -521,9 +521,15 @@
                                     <label class="form-label" for="calcIngresoEstimado">Ingreso estimado</label>
                                     <input type="text" class="form-control" id="calcIngresoEstimado" value="S/ 0.00" readonly>
                                 </div>
-                                <div class="form-group">
+                                <div class="form-group calc-ingreso-declarado-group">
                                     <label class="form-label" for="calcIngresoDeclarado">Ingreso declarado (Soles)</label>
-                                    <input type="text" class="form-control" id="calcIngresoDeclarado" placeholder="00.00" value="">
+                                    <div class="calc-ingreso-piloto-row">
+                                        <input type="text" class="form-control" id="calcIngresoDeclarado" placeholder="00.00" value="">
+                                        <label class="calc-piloto-checkbox-card" for="calcCasoPiloto">
+                                            <input type="checkbox" id="calcCasoPiloto" disabled>
+                                            <span>El caso cumple las condiciones del piloto</span>
+                                        </label>
+                                    </div>
                                 </div>
                             </div>
                         </section>

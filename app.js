@@ -1575,6 +1575,7 @@ document.addEventListener('DOMContentLoaded', () => {
         syncPrecioVehiculoSimulacionCalculo();
         const calcIngresoDeclaradoInicial = document.getElementById('calcIngresoDeclarado');
         if (calcIngresoDeclaradoInicial) calcIngresoDeclaradoInicial.value = '';
+        if (typeof updateCalcCasoPilotoState === 'function') updateCalcCasoPilotoState();
 
         // Update califica styling
         const calificacionCard = document.querySelector('.resultado-calificacion');
@@ -2225,9 +2226,22 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     const calcIngresoDeclaradoInput = document.getElementById('calcIngresoDeclarado');
+    const calcCasoPilotoCheckbox = document.getElementById('calcCasoPiloto');
+
+    function updateCalcCasoPilotoState() {
+        if (!calcIngresoDeclaradoInput || !calcCasoPilotoCheckbox) return;
+        const tieneIngresoDeclarado = calcIngresoDeclaradoInput.value.trim() !== '';
+        calcCasoPilotoCheckbox.disabled = !tieneIngresoDeclarado;
+        if (!tieneIngresoDeclarado) {
+            calcCasoPilotoCheckbox.checked = false;
+        }
+    }
+
     if (calcIngresoDeclaradoInput) {
+        updateCalcCasoPilotoState();
         calcIngresoDeclaradoInput.addEventListener('input', (e) => {
             e.target.value = e.target.value.replace(/[^\d.,]/g, '');
+            updateCalcCasoPilotoState();
             const resultadoVisible = document.getElementById('calcResultadoCard').style.display !== 'none' && document.querySelector('#calcCuotasBody tr');
             if (resultadoVisible) {
                 recalcularResultadoCalculo(false);
@@ -5361,6 +5375,7 @@ document.addEventListener('DOMContentLoaded', () => {
             }
             const calcIngresoDeclaradoReset = document.getElementById('calcIngresoDeclarado');
             if (calcIngresoDeclaradoReset) calcIngresoDeclaradoReset.value = '';
+            if (typeof updateCalcCasoPilotoState === 'function') updateCalcCasoPilotoState();
 
             const calificacionCard = document.querySelector('.resultado-calificacion');
             const calificacionIcon = calificacionCard.querySelector('.resultado-calificacion-icon .material-icons-outlined');

@@ -673,6 +673,57 @@ select.form-control {
     font-style: italic;
 }
 
+
+.calc-ingreso-declarado-group {
+    grid-column: span 1;
+}
+
+.calc-ingreso-piloto-row {
+    display: grid;
+    grid-template-columns: minmax(160px, 1fr) minmax(300px, 1.35fr);
+    gap: 12px;
+    align-items: center;
+}
+
+.calc-piloto-checkbox-card {
+    min-height: 42px;
+    padding: 0 14px;
+    border: 1px solid var(--input-border);
+    border-radius: var(--radius-md);
+    background: var(--bg-white);
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: var(--text-primary);
+    white-space: nowrap;
+    cursor: pointer;
+}
+
+.calc-piloto-checkbox-card input {
+    width: 18px;
+    height: 18px;
+    accent-color: var(--primary-blue);
+    flex-shrink: 0;
+}
+
+.calc-piloto-checkbox-card:has(input:disabled) {
+    background: #f9fafb;
+    color: var(--text-muted);
+    cursor: not-allowed;
+}
+
+@media (max-width: 1100px) {
+    .calc-ingreso-piloto-row {
+        grid-template-columns: 1fr;
+    }
+
+    .calc-piloto-checkbox-card {
+        white-space: normal;
+    }
+}
+
 /* === CÓNYUGE SECTION === */
 .conyuge-section {
     background: #fafbfd;
