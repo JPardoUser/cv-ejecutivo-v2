@@ -524,13 +524,28 @@
                                 <div class="form-group calc-ingreso-declarado-group">
                                     <label class="form-label" for="calcIngresoDeclarado">Ingreso declarado (Soles)</label>
                                     <div class="calc-ingreso-piloto-row">
-                                        <input type="text" class="form-control" id="calcIngresoDeclarado" placeholder="00.00" value="">
+                                        <button type="button" class="calc-ingreso-trigger" id="btnAbrirIngresosCalculo" aria-expanded="false" aria-controls="ingresosCalculoDesplegable" aria-label="Desplegar ingresos declarados">
+                                            <input type="text" class="form-control" id="calcIngresoDeclarado" placeholder="00.00" value="" readonly tabindex="-1">
+                                            <span class="material-icons-outlined">expand_more</span>
+                                        </button>
                                         <label class="calc-piloto-checkbox-card" for="calcCasoPiloto">
                                             <input type="checkbox" id="calcCasoPiloto" disabled>
                                             <span>El caso cumple las condiciones del piloto</span>
                                         </label>
                                     </div>
                                 </div>
+                            </div>
+                            <div class="ingresos-calculo-desplegable" id="ingresosCalculoDesplegable" hidden>
+                                <div class="ingresos-calculo-desplegable-header">
+                                    <div>
+                                        <h3>INGRESOS</h3>
+                                        <p>Registra los ingresos declarados. El total se actualizará automáticamente en “Ingreso declarado (Soles)”.</p>
+                                    </div>
+                                    <button type="button" class="ingresos-calculo-ocultar" id="btnCerrarIngresosCalculo" aria-label="Ocultar ingresos">
+                                        <span class="material-icons-outlined">expand_less</span>
+                                    </button>
+                                </div>
+                                <div class="ingresos-calculo-body" id="ingresosCalculoBody"></div>
                             </div>
                         </section>
                     </div>
@@ -1311,70 +1326,32 @@
                     </div>
                 </div>
 
-                <!-- 7. CHECK LIST 1 -->
+                <!-- 7. Comentarios del Ejecutivo -->
                 <div class="card">
-                    <div class="card-header">
-                        <h3>CHECK LIST 1</h3>
-                    </div>
-                    <div class="checklist-layout">
-                        <!-- Left checklist area -->
-                        <div class="checklist-left">
-                            <div class="checklist-subcard">
-                                <div class="checklist-subcard-header">
-                                    <h4>Documentos por adjuntar</h4>
-                                    <span class="tag carretera-badge carretera-express" id="regChecklistCarteraTag">CARTERA: EXPRESS</span>
-                                </div>
-                                <p class="checklist-subcard-desc" id="regChecklistDesc">Para carretera EXPRESS solo se requiere adjuntar copia de DNI ambas caras.</p>
-                                
-                                <table class="checklist-table">
-                                    <thead>
-                                        <tr>
-                                            <th>ARCHIVO PDF</th>
-                                            <th>ACCIÓN</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody id="checklistTableBody">
-                                        <!-- Dynamic rows injected by JS -->
-                                    </tbody>
-                                </table>
-                                <input type="file" id="inputHiddenFile" style="display: none;" accept="application/pdf">
-                            </div>
-                        </div>
-
-                        <!-- Right checkbox area -->
-                        <div class="checklist-right">
-                            <div class="manual-check-box">
-                                <h5>Documentos a adjuntar (marcar manual)</h5>
-                                <div class="manual-check-item" id="manualDniItem">
-                                    <label class="checkbox-container">
-                                        <input type="checkbox" id="chkManualDni">
-                                        <span class="checkmark"></span>
-                                        Copia de DNI ambas caras.
-                                    </label>
-                                </div>
-                                <div class="manual-check-item" id="manualReciboItem" style="display: none;">
-                                    <label class="checkbox-container">
-                                        <input type="checkbox" id="chkManualRecibo">
-                                        <span class="checkmark"></span>
-                                        Recibo de servicios.
-                                    </label>
-                                </div>
-                                <div class="manual-check-item" id="manualCotizacionItem" style="display: none;">
-                                    <label class="checkbox-container">
-                                        <input type="checkbox" id="chkManualCotizacion">
-                                        <span class="checkmark"></span>
-                                        Cotización del vehículo.
-                                    </label>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Executive comments at bottom of checklist -->
                     <div class="comments-section" id="regComentariosSection">
                         <label class="form-label" for="regComentarios" id="regComentariosLabel">Comentarios del Ejecutivo</label>
-                        <textarea class="form-control textarea-comments" id="regComentarios" rows="3" placeholder="Ingrese comentarios sobre los documentos adjuntos o el estado del checklist..."></textarea>
+                        <textarea class="form-control textarea-comments" id="regComentarios" rows="3" placeholder="Ingrese comentarios sobre la solicitud..."></textarea>
                         <div class="comment-card-list" id="regComentariosCards" hidden></div>
+                        <div class="comment-reply-panel" id="regRespuestaOperacionesPanel" hidden>
+                            <div class="comment-reply-header">
+                                <div>
+                                    <h4>Nuevo comentario del Ejecutivo</h4>
+                                    <p>Registre el comentario para responder la observación de Operaciones.</p>
+                                </div>
+                            </div>
+                            <div class="comment-reply-input">
+                                <div class="comment-reply-input-header">
+                                    <label class="form-label" for="regRespuestaOperacionesComentario">Comentario de respuesta</label>
+                                    <span id="regRespuestaOperacionesCounter">0/250</span>
+                                </div>
+                                <textarea class="form-control textarea-comments" id="regRespuestaOperacionesComentario" maxlength="250" rows="3" placeholder="Ingrese comentario de respuesta para Operaciones"></textarea>
+                            </div>
+                        </div>
+                        <div class="documentaria-executive-comment" id="regDocumentariaComentarioPanel" hidden>
+                            <label class="form-label" for="regDocumentariaComentario">Comentarios del Ejecutivo</label>
+                            <textarea class="form-control textarea-comments" id="regDocumentariaComentario" maxlength="250" rows="3" placeholder="Ingrese un comentario para enviar la solicitud a Operaciones"></textarea>
+                            <div class="documentaria-comment-counter" id="regDocumentariaComentarioCounter">0/250</div>
+                        </div>
                         <div class="comment-reply-panel" id="regRespuestaRiesgosPanel" hidden>
                             <div class="comment-reply-header">
                                 <div>
@@ -1400,6 +1377,7 @@
                 <!-- Footer Buttons -->
                 <div class="registro-actions-footer">
                     <button type="button" class="btn btn-outline btn-regresar-reg" id="btnRegresarRegistro">Regresar</button>
+                    <button type="button" class="btn btn-primary btn-enviar-operaciones" id="btnEnviarOperacionesSolicitud" hidden>Enviar a operaciones</button>
                     <button type="button" class="btn btn-primary btn-pasar-riesgos" id="btnPasarRiesgos">Pasar a Riesgos</button>
                 </div>
             </section>
@@ -1421,29 +1399,16 @@
                                 <input type="text" class="input-bandeja" id="searchSolId" placeholder="Ej. EFE001">
                             </div>
                             <div class="form-group-bandeja">
-                                <label class="label-bandeja">TIPO DOC.</label>
-                                <select class="select-bandeja" id="searchTipoDoc">
-                                    <option value="" selected>Seleccionar</option>
-                                    <option value="DNI">DNI</option>
-                                </select>
-                            </div>
-                            <div class="form-group-bandeja">
                                 <label class="label-bandeja">N° DOCUMENTO</label>
                                 <input type="text" class="input-bandeja" id="searchDocNum" placeholder="Ej. 12345678">
                             </div>
                             <div class="form-group-bandeja">
-                                <label class="label-bandeja">CONCESIONARIO</label>
-                                <select class="select-bandeja" id="searchConcesionario">
-                                    <option value="" selected>Seleccionar</option>
-                                    <option value="Toyota">Toyota</option>
-                                    <option value="Hyundai">Hyundai</option>
-                                    <option value="Kia">Kia</option>
-                                    <option value="Chevrolet">Chevrolet</option>
-                                </select>
+                                <label class="label-bandeja">NOMBRES</label>
+                                <input type="text" class="input-bandeja" id="searchNombres" placeholder="Ingrese nombres">
                             </div>
                             <div class="form-group-bandeja">
-                                <label class="label-bandeja">TIENDA</label>
-                                <select class="select-bandeja" id="searchTienda">
+                                <label class="label-bandeja">SUCURSAL</label>
+                                <select class="select-bandeja" id="searchSucursal">
                                     <option value="" selected>Seleccionar</option>
                                     <option value="San Miguel">San Miguel</option>
                                     <option value="Puruchuco">Puruchuco</option>
@@ -1511,11 +1476,10 @@
                                 <thead>
                                     <tr>
                                         <th class="sortable" data-sort="id">SOLICITUD <span class="sort-icon-bandeja">⁝</span></th>
-                                        <th class="sortable" data-sort="tipoDoc">TIPO DOC <span class="sort-icon-bandeja">⁝</span></th>
                                         <th class="sortable" data-sort="numeroDocumento">N° DOCUMENTO <span class="sort-icon-bandeja">⁝</span></th>
-                                        <th class="sortable" data-sort="concesionario">CONCESIONARIO <span class="sort-icon-bandeja">⁝</span></th>
-                                        <th class="sortable" data-sort="tienda">TIENDA <span class="sort-icon-bandeja">⁝</span></th>
-                                        <th class="sortable" data-sort="fecha">FECHA RECEPCIÓN <span class="sort-icon-bandeja">⁝</span></th>
+                                        <th class="sortable" data-sort="cliente">NOMBRES <span class="sort-icon-bandeja">⁝</span></th>
+                                        <th class="sortable" data-sort="tienda">SUCURSAL <span class="sort-icon-bandeja">⁝</span></th>
+                                        <th class="sortable" data-sort="fecha">FECHA <span class="sort-icon-bandeja">⁝</span></th>
                                         <th class="sortable" data-sort="etapa">ETAPA <span class="sort-icon-bandeja">⁝</span></th>
                                         <th class="sortable" data-sort="estado">ESTADO <span class="sort-icon-bandeja">⁝</span></th>
                                         <th>ACCIONES</th>
@@ -1923,6 +1887,7 @@
             </div>
         </div>
     </div>
+
 
     <script src="app.js"></script>
 </body>

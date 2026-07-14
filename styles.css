@@ -2414,7 +2414,7 @@ select.form-control {
 }
 
 .comment-card-item.comment-card-ejecutivo-respuesta {
-    border-left-color: var(--success-green);
+    border-left-color: var(--primary-blue);
 }
 
 .comment-reply-panel {
@@ -4968,3 +4968,147 @@ select.form-control {
     }
 }
 
+
+
+/* === DOCUMENTARIA: COMENTARIO DEL EJECUTIVO PARA OPERACIONES === */
+.documentaria-executive-comment {
+    margin-top: 18px;
+    padding-top: 18px;
+    border-top: 1px solid var(--border-color);
+}
+
+.documentaria-executive-comment .textarea-comments:disabled {
+    background: #f3f6fc;
+    color: var(--text-primary);
+    opacity: 1;
+    cursor: not-allowed;
+}
+
+.documentaria-comment-counter {
+    margin-top: 6px;
+    text-align: right;
+    font-size: 0.75rem;
+    color: var(--text-muted);
+}
+
+.registro-actions-footer .btn-enviar-operaciones {
+    margin-left: 0;
+}
+
+/* Respuesta del Ejecutivo a observaciones de Operaciones en la pantalla Solicitud */
+.comment-reply-actions {
+    display: flex;
+    justify-content: flex-end;
+    margin-top: 12px;
+}
+
+/* Mantener oculto "Enviar a operaciones" cuando no corresponde a la etapa/estado actual. */
+#btnEnviarOperacionesSolicitud[hidden] {
+    display: none !important;
+}
+
+
+/* === INGRESOS DESDE CÁLCULO === */
+.calc-ingreso-trigger {
+    position: relative;
+    display: block;
+    width: 100%;
+    min-width: 0;
+    text-align: left;
+}
+
+.calc-ingreso-trigger .form-control {
+    width: 100%;
+    padding-right: 42px;
+    cursor: pointer;
+    background: var(--bg-white);
+    color: var(--text-primary);
+}
+
+.calc-ingreso-trigger > .material-icons-outlined {
+    position: absolute;
+    right: 13px;
+    top: 50%;
+    transform: translateY(-50%);
+    font-size: 20px;
+    color: var(--primary-blue);
+    pointer-events: none;
+    transition: transform var(--transition-fast);
+}
+
+.calc-ingreso-trigger.active > .material-icons-outlined {
+    transform: translateY(-50%) rotate(180deg);
+}
+
+.calc-ingreso-trigger:hover .form-control,
+.calc-ingreso-trigger:focus-visible .form-control {
+    border-color: var(--input-focus);
+    box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+}
+
+.ingresos-calculo-desplegable {
+    margin-top: 18px;
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-lg);
+    background: #f8fafc;
+    overflow: hidden;
+    animation: fadeInModule 0.25s ease;
+}
+
+.ingresos-calculo-desplegable[hidden] {
+    display: none !important;
+}
+
+.ingresos-calculo-desplegable-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    padding: 16px 18px;
+    border-bottom: 1px solid var(--border-color);
+    background: var(--bg-white);
+}
+
+.ingresos-calculo-desplegable-header h3 {
+    color: var(--primary-blue);
+    font-size: 1rem;
+    margin-bottom: 3px;
+}
+
+.ingresos-calculo-desplegable-header p {
+    color: var(--text-secondary);
+    font-size: 0.78rem;
+}
+
+.ingresos-calculo-ocultar {
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--primary-blue);
+}
+
+.ingresos-calculo-ocultar:hover {
+    background: var(--bg-body);
+}
+
+.ingresos-calculo-body {
+    padding: 16px;
+}
+
+.ingresos-calculo-body .ingresos-card-en-calculo {
+    margin: 0;
+    box-shadow: none;
+}
+
+@media (max-width: 768px) {
+    .ingresos-calculo-desplegable-header {
+        align-items: flex-start;
+        padding: 14px;
+    }
+    .ingresos-calculo-body {
+        padding: 10px;
+    }
+}

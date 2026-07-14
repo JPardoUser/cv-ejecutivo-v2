@@ -34,9 +34,8 @@ document.addEventListener('DOMContentLoaded', () => {
     // Bandeja Redesigned
     const searchSolId = document.getElementById('searchSolId');
     const searchDocNum = document.getElementById('searchDocNum');
-    const searchTipoDoc = document.getElementById('searchTipoDoc');
-    const searchConcesionario = document.getElementById('searchConcesionario');
-    const searchTienda = document.getElementById('searchTienda');
+    const searchNombres = document.getElementById('searchNombres');
+    const searchSucursal = document.getElementById('searchSucursal');
     const searchEtapa = document.getElementById('searchEtapa');
     const searchEstado = document.getElementById('searchEstado');
     const searchFechaDesde = document.getElementById('searchFechaDesde');
@@ -67,6 +66,7 @@ document.addEventListener('DOMContentLoaded', () => {
     let stageSimulacionChangeGuardSolicitudId = null;
     let stageSimulacionChangeGuardBaseline = new WeakMap();
     let suspendStageSimulacionChangeGuard = false;
+    let resultadoActionsLockedByStage = false;
 
 
     // ============================
@@ -74,8 +74,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // ============================
     const ETAPAS_SOLICITUD_NAV = [
         { key: 'SIMULACION', order: '01', label: 'SIMULACIÓN' },
-        { key: 'SOLICITUD', order: '02', label: 'SOLICITUD' },
-        { key: 'DOCUMENTARIA', order: '03', label: 'DOCUMENTARIA' }
+        { key: 'SOLICITUD', order: '02', label: 'SOLICITUD' }
     ];
 
     function getEtapaNavigationKey(etapa) {
@@ -83,7 +82,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (etapaNormalizada === 'SIMULACION') return 'SIMULACION';
         if (etapaNormalizada === 'SOLICITUD' || etapaNormalizada === 'RIESGOS') return 'SOLICITUD';
         if (['DOCUMENTARIA', 'FIRMA', 'FIRMAS', 'OPERACIONES', 'ACTIVACION', 'ACTIVADO'].includes(etapaNormalizada)) {
-            return 'DOCUMENTARIA';
+            return 'SOLICITUD';
         }
         return etapaNormalizada;
     }
@@ -97,9 +96,67 @@ document.addEventListener('DOMContentLoaded', () => {
             .replace(/[^a-z0-9]+/g, '-');
     }
 
+    function isResultadoNavigationAllowedForSolicitud(solicitud) {
+        if (!solicitud) return false;
+        const etapa = normalizarEtapa(solicitud.etapa);
+        const estado = normalizarEtapa(solicitud.estado || 'PENDIENTE');
+
+        if (etapa === 'RIESGOS') return ['PENDIENTE', 'OBSERVADO', 'RECHAZADO'].includes(estado);
+        if (etapa === 'DOCUMENTARIA') return estado === 'PENDIENTE';
+        if (etapa === 'OPERACIONES') return ['PENDIENTE', 'OBSERVADO', 'RECHAZADO', 'APROBADO'].includes(estado);
+        return solicitud.habilitarNavegacionEtapas === true;
+    }
+
     function canUseStageNavigationForCurrentFlow() {
         const solicitudActual = solicitudes.find(s => s.id === currentSolicitudId);
-        return !!(stageNavigationEnabledForCurrentFlow && solicitudActual && solicitudActual.habilitarNavegacionEtapas === true);
+        return !!(stageNavigationEnabledForCurrentFlow && isResultadoNavigationAllowedForSolicitud(solicitudActual));
+    }
+
+    function shouldDisableResultadoActions(solicitud) {
+        if (!solicitud) return false;
+        const etapa = normalizarEtapa(solicitud.etapa);
+        const estado = normalizarEtapa(solicitud.estado || 'PENDIENTE');
+
+        if (etapa === 'RIESGOS') return ['PENDIENTE', 'RECHAZADO'].includes(estado);
+        if (etapa === 'DOCUMENTARIA') return estado === 'PENDIENTE';
+        if (etapa === 'OPERACIONES') return ['PENDIENTE', 'OBSERVADO', 'RECHAZADO', 'APROBADO'].includes(estado);
+        return false;
+    }
+
+    function applyResultadoActionButtonsState(solicitud) {
+        resultadoActionsLockedByStage = shouldDisableResultadoActions(solicitud);
+        const btnCalcular = document.getElementById('btnCalcularCuotas');
+        const btnContinuarCalculo = document.getElementById('btnContinuarDesdeCalculo');
+
+        if (btnCalcular) {
+            btnCalcular.disabled = resultadoActionsLockedByStage;
+            btnCalcular.setAttribute('aria-disabled', String(resultadoActionsLockedByStage));
+        }
+        if (btnContinuarCalculo) {
+            btnContinuarCalculo.disabled = resultadoActionsLockedByStage;
+            btnContinuarCalculo.classList.toggle('is-disabled', resultadoActionsLockedByStage || !tieneFilaCalculoSeleccionada());
+            btnContinuarCalculo.setAttribute('aria-disabled', String(resultadoActionsLockedByStage || !tieneFilaCalculoSeleccionada()));
+        }
+    }
+
+    function applyResultadoReadOnlyState(readOnly, solicitud = null) {
+        const moduloResultado = document.getElementById('moduloResultado');
+        if (!moduloResultado) return;
+
+        moduloResultado.querySelectorAll('input, select, textarea').forEach(control => {
+            if (!control.dataset.resultadoOriginalDisabled) {
+                control.dataset.resultadoOriginalDisabled = control.disabled ? 'true' : 'false';
+            }
+            control.disabled = readOnly || control.dataset.resultadoOriginalDisabled === 'true';
+        });
+
+        const btnContinuar = document.getElementById('btnContinuarSolicitud');
+        if (btnContinuar) btnContinuar.style.display = readOnly ? 'none' : 'inline-flex';
+
+        const btnRegresarCalculo = document.getElementById('btnRegresarCalculo');
+        if (btnRegresarCalculo) btnRegresarCalculo.style.display = readOnly ? 'none' : 'inline-flex';
+
+        applyResultadoActionButtonsState(solicitud);
     }
 
     function getCurrentSolicitudActiva() {
@@ -352,6 +409,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         showStageModule('moduloResultado');
+        applyResultadoReadOnlyState(true, solicitud);
         renderStageNavigation('resultadoStageTabs', solicitud.etapa || 'SIMULACIÓN', solicitud.estado || 'PENDIENTE', 'SIMULACION');
         showFlujoTab('resultado');
     }
@@ -359,23 +417,22 @@ document.addEventListener('DOMContentLoaded', () => {
     function showSolicitudStageFromNavigation(solicitud) {
         if (!solicitud) return;
         currentSolicitudId = solicitud.id;
-        const regSolicitudId = document.getElementById('regSolicitudId');
-
-        if (regSolicitudId && regSolicitudId.textContent === solicitud.id) {
-            actualizarEstadoRegistroResumen(solicitud);
-            renderStageNavigation('registroStageTabs', solicitud.etapa || 'SOLICITUD', solicitud.estado || 'PENDIENTE', 'SOLICITUD');
-            showStageModule('moduloRegistroSolicitud');
-            syncRegistroStickyClientFields();
-            setTimeout(updateRegistroStickyClientBar, 0);
-            return;
-        }
 
         if (normalizarEtapa(solicitud.etapa) === 'SIMULACION') {
             continuarARegistroSolicitud();
             return;
         }
 
-        showToast('La pantalla de Solicitud estará disponible después de continuar desde Cálculo.', 'warning');
+        // Cargar siempre la pantalla completa de SOLICITUD con los datos de la
+        // solicitud seleccionada. Esto evita reutilizar información de una
+        // solicitud revisada anteriormente al navegar desde DOCUMENTARIA.
+        handleRevisarAction(solicitud);
+        renderStageNavigation(
+            'registroStageTabs',
+            solicitud.etapa || 'SOLICITUD',
+            solicitud.estado || 'PENDIENTE',
+            'SOLICITUD'
+        );
     }
 
     function navigateToStageFromNavigation(stageKey) {
@@ -513,7 +570,19 @@ document.addEventListener('DOMContentLoaded', () => {
             tienda: 'San Miguel',
             etapa: 'DOCUMENTARIA',
             estado: 'PENDIENTE',
-            telefono: '922159933'
+            telefono: '922159933',
+            comentarioEjecutivo: {
+                ejecutivo: 'ALOCHA - Ejecutivo',
+                fechaHora: '22-05-2026 14:40:00',
+                comentario: 'Se registró la información completa de la solicitud y se adjuntaron los documentos requeridos para la evaluación.'
+            },
+            riesgosDecision: {
+                tipo: 'APROBADO',
+                analista: 'Luis Rojas - Analista de Riesgos',
+                motivo: 'Solicitud aprobada conforme a políticas de crédito',
+                fechaHora: '22-05-2026 15:30:00',
+                comentario: 'La solicitud cumple con las políticas de capacidad de pago y evaluación crediticia. Se aprueba su continuidad a la etapa Documentaria.'
+            }
         },
         {
             id: 'EFE001',
@@ -573,6 +642,13 @@ document.addEventListener('DOMContentLoaded', () => {
                 { id: 'POP001-CL2-002', name: 'Contrato_credito_firmado_POP001.pdf' },
                 { id: 'POP001-CL2-003', name: 'Garantia_mobiliaria_POP001.pdf' }
             ],
+            riesgosDecision: {
+                tipo: 'APROBADO',
+                analista: 'Luis Rojas - Analista de Riesgos',
+                motivo: 'Solicitud aprobada conforme a políticas de crédito',
+                fechaHora: '19-05-2026 16:05:00',
+                comentario: 'La solicitud cumple con la evaluación crediticia y puede continuar a la revisión de Operaciones.'
+            },
             operacionesObservacion: {
                 tipo: 'OBSERVADO',
                 analista: 'María Fernández - Operaciones',
@@ -1394,8 +1470,8 @@ document.addEventListener('DOMContentLoaded', () => {
     function updateContinuarDesdeCalculoState() {
         const btnContinuarCalculo = document.getElementById('btnContinuarDesdeCalculo');
         if (!btnContinuarCalculo) return;
-        const debeHabilitar = tieneFilaCalculoSeleccionada();
-        btnContinuarCalculo.disabled = false;
+        const debeHabilitar = tieneFilaCalculoSeleccionada() && !resultadoActionsLockedByStage;
+        btnContinuarCalculo.disabled = resultadoActionsLockedByStage;
         btnContinuarCalculo.classList.toggle('is-disabled', !debeHabilitar);
         btnContinuarCalculo.setAttribute('aria-disabled', String(!debeHabilitar));
     }
@@ -1593,6 +1669,7 @@ document.addEventListener('DOMContentLoaded', () => {
         // Switch views: hide all, show resultado
         document.querySelectorAll('.module-page').forEach(p => p.classList.remove('active'));
         document.getElementById('moduloResultado').classList.add('active');
+        applyResultadoReadOnlyState(false, newSimSol);
         renderStageNavigation('resultadoStageTabs', newSimSol.etapa, newSimSol.estado);
         showFlujoTab('resultado');
 
@@ -1845,6 +1922,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function continuarDesdeCalculoASolicitud() {
+        if (resultadoActionsLockedByStage) return;
         if (!puedeContinuarDesdeCalculo()) {
             clearTelefonoPoliticasHighlight();
             updateContinuarDesdeCalculoState();
@@ -2017,7 +2095,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
     limpiarPoliticasCalculoSinSeleccion();
     aplicarEstiloCarretera(document.getElementById('regCartera'), currentCarretera);
-    aplicarEstiloCarretera(document.getElementById('regChecklistCarteraTag'), currentCarretera);
     actualizarVisibilidadMancomunaIngresos();
     // Se ejecuta al final de la inicialización, después de declarar INGRESOS_CONFIG,
     // para evitar detener la carga del JS antes de enlazar el botón Calcular.
@@ -2222,6 +2299,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     document.getElementById('btnCalcularCuotas').addEventListener('click', () => {
+        if (resultadoActionsLockedByStage) return;
         recalcularResultadoCalculo(true);
     });
 
@@ -2239,16 +2317,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
     if (calcIngresoDeclaradoInput) {
         updateCalcCasoPilotoState();
-        calcIngresoDeclaradoInput.addEventListener('input', (e) => {
-            e.target.value = e.target.value.replace(/[^\d.,]/g, '');
-            updateCalcCasoPilotoState();
-            const resultadoVisible = document.getElementById('calcResultadoCard').style.display !== 'none' && document.querySelector('#calcCuotasBody tr');
-            if (resultadoVisible) {
-                recalcularResultadoCalculo(false);
-            } else {
-                actualizarCapacidadCuotaMaximaCalculo(false);
-            }
-        });
     }
 
     function normalizarDecimalInput(value) {
@@ -2530,6 +2598,11 @@ document.addEventListener('DOMContentLoaded', () => {
         saveCurrentRegistrationState();
         const solicitudActual = solicitudes.find(s => s.id === currentSolicitudId);
 
+        if (normalizarEtapa(solicitudActual?.etapa) === 'DOCUMENTARIA') {
+            volverABandejaEntradaDesdeSolicitud();
+            return;
+        }
+
         if (isRiesgosPendienteSolicitud(solicitudActual) || isCasoObservadoORechazadoSolicitud(solicitudActual)) {
             volverABandejaEntradaDesdeSolicitud();
             return;
@@ -2682,6 +2755,14 @@ document.addEventListener('DOMContentLoaded', () => {
     const regRespuestaRiesgosInputBox = document.getElementById('regRespuestaRiesgosInputBox');
     const regRespuestaRiesgosComentario = document.getElementById('regRespuestaRiesgosComentario');
     const regRespuestaRiesgosCounter = document.getElementById('regRespuestaRiesgosCounter');
+    const regDocumentariaComentarioPanel = document.getElementById('regDocumentariaComentarioPanel');
+    const regDocumentariaComentario = document.getElementById('regDocumentariaComentario');
+    const regDocumentariaComentarioCounter = document.getElementById('regDocumentariaComentarioCounter');
+    const btnEnviarOperacionesSolicitud = document.getElementById('btnEnviarOperacionesSolicitud');
+    const regRespuestaOperacionesPanel = document.getElementById('regRespuestaOperacionesPanel');
+    const regRespuestaOperacionesComentario = document.getElementById('regRespuestaOperacionesComentario');
+    const regRespuestaOperacionesCounter = document.getElementById('regRespuestaOperacionesCounter');
+    const btnEnviarRespuestaOperaciones = document.getElementById('btnEnviarRespuestaOperaciones');
     const docPostAprobacionCard = document.getElementById('docPostAprobacionCard');
     const docPostAprobacionList = document.getElementById('docPostAprobacionList');
     const btnVerMasPostDocs = document.getElementById('btnVerMasPostDocs');
@@ -2896,6 +2977,7 @@ document.addEventListener('DOMContentLoaded', () => {
     function getMotivoDecisionLabel(tipo, origen) {
         const tipoNormalizado = normalizarEtapa(tipo);
         const origenNormalizado = origen === 'operaciones' ? 'operaciones' : 'riesgos';
+        if (tipoNormalizado === 'APROBADO') return 'Detalle de aprobación';
         if (tipoNormalizado === 'RECHAZADO') {
             return origenNormalizado === 'operaciones' ? 'Motivo de rechazo' : 'Motivo de Rechazo';
         }
@@ -2926,11 +3008,16 @@ document.addEventListener('DOMContentLoaded', () => {
         if (!decision) return '';
         const tipoDecision = decision.tipo || estadoSolicitud || '';
         const esOperaciones = origen === 'operaciones';
-        const titulo = normalizarEtapa(tipoDecision) === 'RECHAZADO'
-            ? (esOperaciones ? 'Comentario de rechazo de Operaciones' : 'Comentario de rechazo de Riesgos')
-            : (esOperaciones ? 'Comentario de observación de Operaciones' : 'Comentario de observación de Riesgos');
+        const tipoNormalizado = normalizarEtapa(tipoDecision);
+        const titulo = tipoNormalizado === 'APROBADO'
+            ? (esOperaciones ? 'Aprobación de Operaciones' : 'Aprobación de Riesgos')
+            : (tipoNormalizado === 'RECHAZADO'
+                ? (esOperaciones ? 'Comentario de rechazo de Operaciones' : 'Comentario de rechazo de Riesgos')
+                : (esOperaciones ? 'Comentario de observación de Operaciones' : 'Comentario de observación de Riesgos'));
         const analistaLabel = esOperaciones ? 'Analista de operaciones' : 'Analista de riesgos';
-        const comentarioLabel = esOperaciones ? 'Comentario del analista de operaciones' : 'Comentario del analista de riesgos';
+        const comentarioLabel = tipoNormalizado === 'APROBADO'
+            ? (esOperaciones ? 'Comentario de aprobación de Operaciones' : 'Comentario de aprobación de Riesgos')
+            : (esOperaciones ? 'Comentario del analista de operaciones' : 'Comentario del analista de riesgos');
         return [
             titulo,
             `${analistaLabel}: ${decision.analista || '-'}`,
@@ -3015,12 +3102,18 @@ document.addEventListener('DOMContentLoaded', () => {
         if (!decision) return null;
         const tipoDecision = decision.tipo || estadoSolicitud || '';
         const esOperaciones = origen === 'operaciones';
-        const esRechazo = normalizarEtapa(tipoDecision) === 'RECHAZADO';
-        const titulo = esRechazo
-            ? (esOperaciones ? 'Comentario de rechazo de Operaciones' : 'Comentario de rechazo de Riesgos')
-            : (esOperaciones ? 'Comentario de observación de Operaciones' : 'Comentario de observación de Riesgos');
+        const tipoNormalizado = normalizarEtapa(tipoDecision);
+        const esAprobado = tipoNormalizado === 'APROBADO';
+        const esRechazo = tipoNormalizado === 'RECHAZADO';
+        const titulo = esAprobado
+            ? (esOperaciones ? 'Aprobación de Operaciones' : 'Aprobación de Riesgos')
+            : (esRechazo
+                ? (esOperaciones ? 'Comentario de rechazo de Operaciones' : 'Comentario de rechazo de Riesgos')
+                : (esOperaciones ? 'Comentario de observación de Operaciones' : 'Comentario de observación de Riesgos'));
         const analistaLabel = esOperaciones ? 'Analista de operaciones' : 'Analista de riesgos';
-        const comentarioLabel = esOperaciones ? 'Comentario del analista de operaciones' : 'Comentario del analista de riesgos';
+        const comentarioLabel = esAprobado
+            ? (esOperaciones ? 'Comentario de aprobación de Operaciones' : 'Comentario de aprobación de Riesgos')
+            : (esOperaciones ? 'Comentario del analista de operaciones' : 'Comentario del analista de riesgos');
 
         return {
             tipo: esOperaciones ? 'operaciones' : 'riesgos',
@@ -3046,7 +3139,8 @@ document.addEventListener('DOMContentLoaded', () => {
         if (!includeRiesgos || !solicitud) return false;
         const etapa = normalizarEtapa(solicitud.etapa);
         const estado = normalizarEtapa(solicitud.estado);
-        return etapa === 'RIESGOS'
+        const etapaConHistorialRiesgos = ['RIESGOS', 'DOCUMENTARIA', 'OPERACIONES', 'FIRMA', 'FIRMAS', 'ACTIVACION', 'ACTIVADO'].includes(etapa);
+        return etapaConHistorialRiesgos
             && (
                 ['OBSERVADO', 'RECHAZADO'].includes(estado)
                 || !!riesgosDecision
@@ -3059,16 +3153,14 @@ document.addEventListener('DOMContentLoaded', () => {
         return (Array.isArray(solicitud?.respuestasEjecutivo) ? solicitud.respuestasEjecutivo : [])
             .filter(resp => (resp.origen || 'riesgos') === origenNormalizado && String(resp.comentario || '').trim())
             .map(resp => ({
-                tipo: 'ejecutivo-respuesta',
-                titulo: origenNormalizado === 'operaciones'
-                    ? 'Respuesta del Ejecutivo a Operaciones'
-                    : 'Respuesta del Ejecutivo a Riesgos',
+                tipo: 'ejecutivo',
+                titulo: 'Comentario del Ejecutivo',
                 rol: 'Ejecutivo',
                 detalles: [
                     { label: 'Ejecutivo', value: resp.ejecutivo || getEjecutivoNombreDesdeContexto() },
                     { label: 'Fecha y hora', value: resp.fechaHora || '-' }
                 ],
-                comentarioLabel: 'Comentario de respuesta',
+                comentarioLabel: 'Comentario',
                 comentario: resp.comentario || '-'
             }));
     }
@@ -3090,9 +3182,11 @@ document.addEventListener('DOMContentLoaded', () => {
             cards.push(...getRespuestasEjecutivoCards(solicitud, 'riesgos'));
         }
 
-        if (includeOperaciones && isOperacionesObservadoSolicitud(solicitud)) {
-            const operacionesCard = getDecisionAnalistaCardData(solicitud.operacionesObservacion, 'operaciones', solicitud.estado);
-            if (operacionesCard) cards.push(operacionesCard);
+        if (includeOperaciones) {
+            if (isOperacionesObservadoSolicitud(solicitud)) {
+                const operacionesCard = getDecisionAnalistaCardData(solicitud.operacionesObservacion, 'operaciones', solicitud.estado);
+                if (operacionesCard) cards.push(operacionesCard);
+            }
             cards.push(...getRespuestasEjecutivoCards(solicitud, 'operaciones'));
         }
 
@@ -3138,6 +3232,183 @@ document.addEventListener('DOMContentLoaded', () => {
         container.hidden = false;
     }
 
+    function actualizarContadorComentarioDocumentaria() {
+        if (!regDocumentariaComentario || !regDocumentariaComentarioCounter) return;
+        const valor = regDocumentariaComentario.value.slice(0, 250);
+        if (valor !== regDocumentariaComentario.value) regDocumentariaComentario.value = valor;
+        regDocumentariaComentarioCounter.textContent = `${valor.length}/250`;
+    }
+
+    function actualizarContadorRespuestaOperaciones() {
+        if (!regRespuestaOperacionesComentario || !regRespuestaOperacionesCounter) return;
+        const valor = regRespuestaOperacionesComentario.value.slice(0, 250);
+        if (valor !== regRespuestaOperacionesComentario.value) regRespuestaOperacionesComentario.value = valor;
+        regRespuestaOperacionesCounter.textContent = `${valor.length}/250`;
+    }
+
+    function actualizarRespuestaOperacionesSolicitud(solicitud) {
+        const etapa = normalizarEtapa(solicitud?.etapa);
+        const estado = normalizarEtapa(solicitud?.estado);
+        const puedeResponder = etapa === 'OPERACIONES' && estado === 'OBSERVADO';
+
+        if (regRespuestaOperacionesPanel) regRespuestaOperacionesPanel.hidden = !puedeResponder;
+        if (regRespuestaOperacionesComentario) {
+            regRespuestaOperacionesComentario.value = puedeResponder ? (solicitud?.respuestaOperacionesBorrador || '') : '';
+            regRespuestaOperacionesComentario.disabled = !puedeResponder;
+        }
+        if (btnEnviarRespuestaOperaciones) {
+            btnEnviarRespuestaOperaciones.hidden = true;
+            btnEnviarRespuestaOperaciones.style.display = 'none';
+        }
+        actualizarContadorRespuestaOperaciones();
+    }
+
+    if (regRespuestaOperacionesComentario) {
+        regRespuestaOperacionesComentario.addEventListener('input', () => {
+            const solicitud = solicitudes.find(item => item.id === currentSolicitudId);
+            if (solicitud && normalizarEtapa(solicitud.etapa) === 'OPERACIONES' && normalizarEtapa(solicitud.estado) === 'OBSERVADO') {
+                solicitud.respuestaOperacionesBorrador = regRespuestaOperacionesComentario.value;
+            }
+            actualizarContadorRespuestaOperaciones();
+        });
+    }
+
+
+    function actualizarControlesDocumentariaSolicitud(solicitud) {
+        const etapa = normalizarEtapa(solicitud?.etapa);
+        const esDocumentariaPendiente = etapa === 'DOCUMENTARIA' && normalizarEtapa(solicitud?.estado) === 'PENDIENTE';
+        const esOperacionesDesdeSolicitud = etapa === 'OPERACIONES' && solicitud?.operacionesDesdeDocumentariaSolicitud === true;
+
+        if (regDocumentariaComentarioPanel) {
+            regDocumentariaComentarioPanel.hidden = !(esDocumentariaPendiente || esOperacionesDesdeSolicitud);
+        }
+        if (regDocumentariaComentario) {
+            regDocumentariaComentario.value = esOperacionesDesdeSolicitud
+                ? (solicitud.comentarioEnvioOperaciones?.comentario || '')
+                : (solicitud.comentarioOperacionesBorrador || '');
+            regDocumentariaComentario.disabled = esOperacionesDesdeSolicitud;
+        }
+        if (btnEnviarOperacionesSolicitud) {
+            const estado = normalizarEtapa(solicitud?.estado);
+            const esOperacionesObservado = etapa === 'OPERACIONES' && estado === 'OBSERVADO';
+            const esSolicitudPendiente = etapa === 'SOLICITUD' && estado === 'PENDIENTE';
+            const mostrarBotonEnvio = !esSolicitudPendiente && (esDocumentariaPendiente || esOperacionesObservado);
+
+            btnEnviarOperacionesSolicitud.hidden = !mostrarBotonEnvio;
+            btnEnviarOperacionesSolicitud.style.display = mostrarBotonEnvio ? 'inline-flex' : 'none';
+            btnEnviarOperacionesSolicitud.setAttribute('aria-hidden', String(!mostrarBotonEnvio));
+        }
+        actualizarContadorComentarioDocumentaria();
+    }
+
+    function obtenerFechaHoraActualSolicitud() {
+        const ahora = new Date();
+        const pad = valor => String(valor).padStart(2, '0');
+        return `${pad(ahora.getDate())}-${pad(ahora.getMonth() + 1)}-${ahora.getFullYear()} ${pad(ahora.getHours())}:${pad(ahora.getMinutes())}:${pad(ahora.getSeconds())}`;
+    }
+
+    function confirmarEnvioSolicitudAOperaciones() {
+        const solicitud = solicitudes.find(item => item.id === currentSolicitudId);
+        if (!solicitud) return;
+
+        const etapa = normalizarEtapa(solicitud.etapa);
+        const estado = normalizarEtapa(solicitud.estado);
+        const esDocumentariaPendiente = etapa === 'DOCUMENTARIA' && estado === 'PENDIENTE';
+        const esOperacionesObservado = etapa === 'OPERACIONES' && estado === 'OBSERVADO';
+        if (!esDocumentariaPendiente && !esOperacionesObservado) return;
+
+        const comentario = esOperacionesObservado
+            ? String(regRespuestaOperacionesComentario?.value || '').trim()
+            : String(regDocumentariaComentario?.value || '').trim();
+        if (!comentario) {
+            showToast(esOperacionesObservado
+                ? 'Ingrese un comentario para responder la observación de Operaciones.'
+                : 'Ingrese un comentario antes de enviar a Operaciones.', 'warning');
+            (esOperacionesObservado ? regRespuestaOperacionesComentario : regDocumentariaComentario)?.focus();
+            return;
+        }
+
+        modalTitle.textContent = 'Confirmar envío a Operaciones';
+        modalBody.innerHTML = `
+            <div class="popup-confirmacion-simulacion">
+                <div class="popup-confirmacion-icon">
+                    <span class="material-icons-outlined">help_outline</span>
+                </div>
+                <p class="popup-confirmacion-text">
+                    ¿Está seguro de enviar la solicitud <strong>${escapeHtml(solicitud.id)}</strong> a Operaciones?
+                </p>
+            </div>
+        `;
+
+        const cancelBtn = document.getElementById('modalBtnCancel');
+        const oldActionBtn = document.getElementById('modalBtnAction');
+        const newActionBtn = oldActionBtn.cloneNode(true);
+        oldActionBtn.parentNode.replaceChild(newActionBtn, oldActionBtn);
+
+        cancelBtn.style.display = 'inline-flex';
+        cancelBtn.textContent = 'Cancelar';
+        newActionBtn.style.display = 'inline-flex';
+        newActionBtn.textContent = 'Confirmar';
+
+        newActionBtn.addEventListener('click', () => {
+            if (esOperacionesObservado) {
+                registrarRespuestaEjecutivoSolicitud(solicitud, 'operaciones', comentario, obtenerFechaHoraActualSolicitud());
+                solicitud.respuestaOperacionesBorrador = '';
+                solicitud.estado = 'PENDIENTE';
+                if (regRespuestaOperacionesComentario) {
+                    regRespuestaOperacionesComentario.value = comentario;
+                    regRespuestaOperacionesComentario.disabled = true;
+                }
+                actualizarRespuestaOperacionesSolicitud(solicitud);
+                actualizarControlesDocumentariaSolicitud(solicitud);
+                applyRegistrationFormReadOnlyState(true);
+                closeModal();
+                if (typeof applyBandejaFilters === 'function') applyBandejaFilters();
+                volverABandejaEntradaDesdeSolicitud();
+                showToast('La solicitud fue enviada nuevamente a Operaciones.', 'success');
+                return;
+            }
+
+            const fechaHoraComentario = obtenerFechaHoraActualSolicitud();
+            solicitud.comentarioEnvioOperaciones = {
+                ejecutivo: getEjecutivoNombreDesdeContexto(),
+                cargo: 'Ejecutivo',
+                fechaHora: fechaHoraComentario,
+                comentario
+            };
+            registrarRespuestaEjecutivoSolicitud(solicitud, 'operaciones', comentario, fechaHoraComentario);
+            solicitud.comentarioOperacionesBorrador = comentario;
+            solicitud.etapa = 'OPERACIONES';
+            solicitud.estado = 'PENDIENTE';
+            solicitud.operacionesDesdeDocumentariaSolicitud = true;
+
+            closeModal();
+            actualizarEstadoRegistroResumen(solicitud);
+            renderStageNavigation('registroStageTabs', solicitud.etapa, solicitud.estado, 'SOLICITUD');
+            actualizarControlesDocumentariaSolicitud(solicitud);
+            applyRegistrationFormReadOnlyState(true);
+            if (typeof applyBandejaFilters === 'function') applyBandejaFilters();
+            showToast('La solicitud fue enviada a Operaciones.', 'success');
+        });
+
+        modalOverlay.classList.add('active');
+        document.body.style.overflow = 'hidden';
+    }
+
+    if (regDocumentariaComentario) {
+        regDocumentariaComentario.addEventListener('input', () => {
+            const solicitud = solicitudes.find(item => item.id === currentSolicitudId);
+            if (solicitud && normalizarEtapa(solicitud.etapa) === 'DOCUMENTARIA') {
+                solicitud.comentarioOperacionesBorrador = regDocumentariaComentario.value;
+            }
+            actualizarContadorComentarioDocumentaria();
+        });
+    }
+
+    if (btnEnviarOperacionesSolicitud) {
+        btnEnviarOperacionesSolicitud.addEventListener('click', confirmarEnvioSolicitudAOperaciones);
+    }
+
     function toggleRegistroComentariosCards(isReadOnly, solicitud) {
         const regComentarios = document.getElementById('regComentarios');
         const regComentariosCards = document.getElementById('regComentariosCards');
@@ -3156,7 +3427,10 @@ document.addEventListener('DOMContentLoaded', () => {
             if (mostrarComentariosDeRiesgos) {
                 renderComentarioCards(
                     regComentariosCards,
-                    getComentariosSolicitudCards(solicitud, { includeRiesgos: true, includeOperaciones: false })
+                    getComentariosSolicitudCards(solicitud, {
+                        includeRiesgos: true,
+                        includeOperaciones: normalizarEtapa(solicitud?.etapa) === 'OPERACIONES'
+                    })
                 );
             } else {
                 regComentariosCards.innerHTML = '';
@@ -3265,6 +3539,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function renderChecklistTable() {
+        if (!checklistTableBody) return;
         checklistTableBody.innerHTML = '';
 
         // Render attached files
@@ -3322,7 +3597,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     docNameContext = 'checklist1';
                     editingDocId = null;
                     pendingFileObject = null;
-                    inputHiddenFile.click();
+                    if (inputHiddenFile) inputHiddenFile.click();
                 });
             }
         }
@@ -3365,12 +3640,12 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     // Hidden input change handler
-    inputHiddenFile.addEventListener('change', (e) => {
+    if (inputHiddenFile) inputHiddenFile.addEventListener('change', (e) => {
         if (e.target.files.length > 0) {
             const file = e.target.files[0];
             if (!isPdfFile(file)) {
                 showToast('Solo se permite adjuntar documentos PDF.', 'warning');
-                inputHiddenFile.value = '';
+                if (inputHiddenFile) inputHiddenFile.value = '';
                 return;
             }
             docNameContext = 'checklist1';
@@ -4126,7 +4401,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         modalDocNameOverlay.classList.remove('active');
-        inputHiddenFile.value = '';
+        if (inputHiddenFile) inputHiddenFile.value = '';
         pendingFileObject = null;
         editingDocId = null;
         docNameContext = null;
@@ -4136,7 +4411,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // Modal cancel document name handler
     btnCancelDocName.addEventListener('click', () => {
         modalDocNameOverlay.classList.remove('active');
-        inputHiddenFile.value = '';
+        if (inputHiddenFile) inputHiddenFile.value = '';
         if (docChecklist2FileInput) docChecklist2FileInput.value = '';
         pendingFileObject = null;
         editingDocId = null;
@@ -4347,22 +4622,6 @@ document.addEventListener('DOMContentLoaded', () => {
         if (!validarCelularSolicitud()) return;
 
         const celular = document.getElementById('regCelular').value.trim();
-        const carreteraRegistro = normalizarCarretera(document.getElementById('regCartera')?.textContent || currentCarretera || 'EXPRESS');
-        const requiredManualChecks = getRequiredManualChecks(carreteraRegistro);
-        const missingManualChecks = requiredManualChecks.filter(item => !document.getElementById(item.id)?.checked);
-        const hasAttachedFile = attachedDocs.length > 0;
-
-        // Validation: Only validate that there is at least one file attached and required checkboxes are checked
-        if (missingManualChecks.length > 0) {
-            const missingLabels = missingManualChecks.map(item => item.label).join(', ');
-            showToast(`Debe marcar las casillas manuales requeridas para carretera ${carreteraRegistro}: ${missingLabels}.`, 'warning');
-            return;
-        }
-        if (!hasAttachedFile) {
-            showToast('Debe adjuntar al menos un documento para poder continuar.', 'warning');
-            return;
-        }
-
         if (isRiesgosObservadoEditableSolicitud(solicitudActual)) {
             ejecutarEnvioARiesgos();
             return;
@@ -4509,7 +4768,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 let valA = a[currentSortColumn] || '';
                 let valB = b[currentSortColumn] || '';
 
-                if (currentSortColumn === 'tipoDoc' || currentSortColumn === 'numeroDocumento') {
+                if (currentSortColumn === 'numeroDocumento') {
                     valA = getSolicitudDocumentoParts(a.documento)[currentSortColumn] || '';
                     valB = getSolicitudDocumentoParts(b.documento)[currentSortColumn] || '';
                 }
@@ -4547,9 +4806,8 @@ document.addEventListener('DOMContentLoaded', () => {
             const documentoParts = getSolicitudDocumentoParts(sol.documento);
             row.innerHTML = `
                 <td><strong style="color: var(--primary-blue); font-weight: 700;">${sol.id}</strong></td>
-                <td>${documentoParts.tipoDoc}</td>
                 <td>${documentoParts.numeroDocumento}</td>
-                <td>${sol.concesionario}</td>
+                <td>${sol.cliente}</td>
                 <td>${sol.tienda}</td>
                 <td>${sol.fecha}</td>
                 <td><span style="font-weight: 700; color: #475569; font-size: 0.78rem;">${sol.etapa}</span></td>
@@ -4667,10 +4925,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function applyBandejaFilters() {
         const solId = document.getElementById('searchSolId').value.toLowerCase().trim();
-        const tipoDocVal = document.getElementById('searchTipoDoc')?.value || '';
         const docNum = document.getElementById('searchDocNum').value.toLowerCase().trim();
-        const concessionsVal = document.getElementById('searchConcesionario').value;
-        const tiendaVal = document.getElementById('searchTienda').value;
+        const nombresVal = document.getElementById('searchNombres').value.toLowerCase().trim();
+        const sucursalVal = document.getElementById('searchSucursal').value;
         const etapaVal = document.getElementById('searchEtapa')?.value || '';
         const estadoVal = document.getElementById('searchEstado').value;
         const fechaDesdeVal = document.getElementById('searchFechaDesde').value.trim();
@@ -4684,17 +4941,14 @@ document.addEventListener('DOMContentLoaded', () => {
         if (solId) {
             filtered = filtered.filter(sol => sol.id.toLowerCase().includes(solId));
         }
-        if (tipoDocVal) {
-            filtered = filtered.filter(sol => getSolicitudDocumentoParts(sol.documento).tipoDoc === tipoDocVal);
-        }
         if (docNum) {
             filtered = filtered.filter(sol => getSolicitudDocumentoParts(sol.documento).numeroDocumento.toLowerCase().includes(docNum));
         }
-        if (concessionsVal) {
-            filtered = filtered.filter(sol => sol.concesionario === concessionsVal);
+        if (nombresVal) {
+            filtered = filtered.filter(sol => String(sol.cliente || '').toLowerCase().includes(nombresVal));
         }
-        if (tiendaVal) {
-            filtered = filtered.filter(sol => sol.tienda === tiendaVal);
+        if (sucursalVal) {
+            filtered = filtered.filter(sol => sol.tienda === sucursalVal);
         }
         if (etapaVal) {
             filtered = filtered.filter(sol => sol.etapa === etapaVal);
@@ -4725,7 +4979,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     // Filtros automáticos: se ejecutan al ingresar datos o seleccionar desplegables
-    [searchSolId, searchDocNum, searchFechaDesde, searchFechaHasta].forEach(input => {
+    [searchSolId, searchDocNum, searchNombres, searchFechaDesde, searchFechaHasta].forEach(input => {
         if (!input) return;
         input.addEventListener('input', () => {
             currentPage = 1;
@@ -4733,7 +4987,7 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     });
 
-    [searchTipoDoc, searchConcesionario, searchTienda, searchEtapa, searchEstado].forEach(select => {
+    [searchSucursal, searchEtapa, searchEstado].forEach(select => {
         if (!select) return;
         select.addEventListener('change', () => {
             currentPage = 1;
@@ -4744,10 +4998,9 @@ document.addEventListener('DOMContentLoaded', () => {
     if (btnLimpiarBandeja) {
         btnLimpiarBandeja.addEventListener('click', () => {
             document.getElementById('searchSolId').value = '';
-            document.getElementById('searchTipoDoc').value = '';
             document.getElementById('searchDocNum').value = '';
-            document.getElementById('searchConcesionario').value = '';
-            document.getElementById('searchTienda').value = '';
+            document.getElementById('searchNombres').value = '';
+            document.getElementById('searchSucursal').value = '';
             document.getElementById('searchEtapa').value = '';
             document.getElementById('searchEstado').value = '';
             document.getElementById('searchFechaDesde').value = '';
@@ -4997,6 +5250,113 @@ document.addEventListener('DOMContentLoaded', () => {
 
     setupIngresosList('titular');
     setupIngresosList('conyuge');
+
+
+    // ============================
+    // INGRESOS DESDE LA PANTALLA DE CÁLCULO
+    // ============================
+    const ingresosCalculoDesplegable = document.getElementById('ingresosCalculoDesplegable');
+    const ingresosCalculoBody = document.getElementById('ingresosCalculoBody');
+    const btnAbrirIngresosCalculo = document.getElementById('btnAbrirIngresosCalculo');
+    const btnCerrarIngresosCalculo = document.getElementById('btnCerrarIngresosCalculo');
+    const ingresosCardOriginal = document.getElementById('ingresosCard');
+    const ingresosCardPlaceholder = document.createComment('ubicacion-original-ingresos');
+    let ingresosCalculoAbierto = false;
+    let ingresosCardDisplayOriginal = '';
+    let ingresosCardHiddenOriginal = false;
+    let ingresosConyugeDisplayOriginal = '';
+    let ingresosConyugeHiddenOriginal = false;
+
+    function getTotalIngresoDeclaradoCalculo() {
+        const totalTitular = getTotalIngresosFor('titular');
+        const incluyeConyuge = !!(toggleConyuge && toggleConyuge.checked);
+        return totalTitular + (incluyeConyuge ? getTotalIngresosFor('conyuge') : 0);
+    }
+
+    function reflejarIngresosEnCalculo() {
+        if (!calcIngresoDeclaradoInput) return;
+        const total = getTotalIngresoDeclaradoCalculo();
+        calcIngresoDeclaradoInput.value = total > 0 ? total.toFixed(2) : '';
+        updateCalcCasoPilotoState();
+        const resultadoVisible = document.getElementById('calcResultadoCard').style.display !== 'none' && document.querySelector('#calcCuotasBody tr');
+        if (resultadoVisible) {
+            recalcularResultadoCalculo(false);
+        } else {
+            actualizarCapacidadCuotaMaximaCalculo(false);
+        }
+    }
+
+    function abrirIngresosDesdeCalculo() {
+        if (!ingresosCalculoDesplegable || !ingresosCalculoBody || !ingresosCardOriginal || resultadoActionsLockedByStage) return;
+        if (ingresosCalculoAbierto) {
+            cerrarIngresosDesdeCalculo();
+            return;
+        }
+        if (!ingresosCardOriginal.parentNode) return;
+
+        ingresosCardDisplayOriginal = ingresosCardOriginal.style.display;
+        ingresosCardHiddenOriginal = ingresosCardOriginal.hidden;
+        ingresosCardOriginal.parentNode.insertBefore(ingresosCardPlaceholder, ingresosCardOriginal);
+        ingresosCalculoBody.appendChild(ingresosCardOriginal);
+        ingresosCardOriginal.classList.add('ingresos-card-en-calculo');
+        // En Cálculo el bloque debe mostrarse siempre, aunque en Solicitud haya quedado
+        // oculto por las reglas de carretera.
+        ingresosCardOriginal.style.display = 'block';
+        ingresosCardOriginal.hidden = false;
+
+        const conyugeSection = document.getElementById('ingresosConyugeCard');
+        if (conyugeSection) {
+            ingresosConyugeDisplayOriginal = conyugeSection.style.display;
+            ingresosConyugeHiddenOriginal = conyugeSection.hidden;
+            const mostrarConyuge = !!(toggleConyuge && toggleConyuge.checked);
+            conyugeSection.style.display = mostrarConyuge ? 'block' : 'none';
+            conyugeSection.hidden = !mostrarConyuge;
+        }
+        updateTotalIngresosFor('titular');
+        updateTotalIngresosFor('conyuge');
+        updateAllAgregarIngresoButtonsState();
+        reflejarIngresosEnCalculo();
+
+        ingresosCalculoDesplegable.hidden = false;
+        btnAbrirIngresosCalculo?.setAttribute('aria-expanded', 'true');
+        btnAbrirIngresosCalculo?.classList.add('active');
+        ingresosCalculoAbierto = true;
+        ingresosCalculoDesplegable.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    }
+
+    function cerrarIngresosDesdeCalculo() {
+        if (!ingresosCalculoAbierto || !ingresosCalculoDesplegable || !ingresosCardOriginal) return;
+        reflejarIngresosEnCalculo();
+
+        if (ingresosCardPlaceholder.parentNode) {
+            ingresosCardPlaceholder.parentNode.insertBefore(ingresosCardOriginal, ingresosCardPlaceholder);
+            ingresosCardPlaceholder.remove();
+        }
+        ingresosCardOriginal.classList.remove('ingresos-card-en-calculo');
+        ingresosCardOriginal.style.display = ingresosCardDisplayOriginal;
+        ingresosCardOriginal.hidden = ingresosCardHiddenOriginal;
+        const conyugeSection = document.getElementById('ingresosConyugeCard');
+        if (conyugeSection) {
+            conyugeSection.style.display = ingresosConyugeDisplayOriginal;
+            conyugeSection.hidden = ingresosConyugeHiddenOriginal;
+        }
+        ingresosCalculoDesplegable.hidden = true;
+        btnAbrirIngresosCalculo?.setAttribute('aria-expanded', 'false');
+        btnAbrirIngresosCalculo?.classList.remove('active');
+        ingresosCalculoAbierto = false;
+        actualizarVisibilidadIngresosSolicitud();
+    }
+
+    if (btnAbrirIngresosCalculo) btnAbrirIngresosCalculo.addEventListener('click', abrirIngresosDesdeCalculo);
+    if (btnCerrarIngresosCalculo) btnCerrarIngresosCalculo.addEventListener('click', cerrarIngresosDesdeCalculo);
+    if (ingresosCardOriginal) {
+        ingresosCardOriginal.addEventListener('input', () => {
+            if (ingresosCalculoAbierto) reflejarIngresosEnCalculo();
+        });
+        ingresosCardOriginal.addEventListener('change', () => {
+            if (ingresosCalculoAbierto) reflejarIngresosEnCalculo();
+        });
+    }
 
 
     const REGISTRO_EDITABLE_SECTION_FIELDS = {
@@ -5323,7 +5683,7 @@ document.addEventListener('DOMContentLoaded', () => {
         // Disable/enable all inputs/selects in the module page
         const inputsAndSelects = document.querySelectorAll('#moduloRegistroSolicitud input, #moduloRegistroSolicitud select, #moduloRegistroSolicitud textarea');
         inputsAndSelects.forEach(input => {
-            if (input.id !== 'inputHiddenFile' && input.id !== 'regRespuestaRiesgosComentario') {
+            if (input.id !== 'inputHiddenFile' && input.id !== 'regRespuestaRiesgosComentario' && input.id !== 'regRespuestaOperacionesComentario') {
                 const isOriginallyReadonly = input.classList.contains('disabled') || input.hasAttribute('readonly');
                 if (readOnly) {
                     input.disabled = true;
@@ -5343,7 +5703,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // REVISAR ACTION ROUTER (IN-PROGRESS & READ-ONLY FLOWS)
     // ============================
     function handleRevisarAction(solicitud) {
-        stageNavigationEnabledForCurrentFlow = false;
+        stageNavigationEnabledForCurrentFlow = isResultadoNavigationAllowedForSolicitud(solicitud);
         currentSolicitudId = solicitud.id; // Set active request ID
 
         if (solicitud.etapa === 'SIMULACIÓN') {
@@ -5392,6 +5752,7 @@ document.addEventListener('DOMContentLoaded', () => {
             // Navigate to resultado screen
             document.querySelectorAll('.module-page').forEach(p => p.classList.remove('active'));
             document.getElementById('moduloResultado').classList.add('active');
+            applyResultadoReadOnlyState(false);
             renderStageNavigation('resultadoStageTabs', solicitud.etapa || 'SIMULACIÓN', solicitud.estado || 'PENDIENTE');
             showFlujoTab('resultado');
 
@@ -5401,12 +5762,17 @@ document.addEventListener('DOMContentLoaded', () => {
             window.scrollTo({ top: 0, behavior: 'smooth' });
             showToast(`Continuando Simulación para ${solicitud.id}`, 'info');
 
-        } else if (['DOCUMENTARIA', 'FIRMA', 'FIRMAS', 'OPERACIONES', 'ACTIVACION'].includes(normalizarEtapa(solicitud.etapa)) || solicitud.documentariaEnviadaOperaciones || isOperacionesObservadoSolicitud(solicitud)) {
+        } else if (['FIRMA', 'FIRMAS', 'ACTIVACION'].includes(normalizarEtapa(solicitud.etapa))
+            && !solicitud.operacionesDesdeDocumentariaSolicitud) {
             showBandejaDocumentaria(solicitud);
 
-        } else if (solicitud.etapa === 'SOLICITUD' || solicitud.etapa === 'RIESGOS') {
+        } else if (['SOLICITUD', 'RIESGOS', 'DOCUMENTARIA', 'OPERACIONES'].includes(normalizarEtapa(solicitud.etapa)) || solicitud.operacionesDesdeDocumentariaSolicitud) {
             ensureRiesgosChecklist1Inicial(solicitud);
-            const isReadOnly = (normalizarEtapa(solicitud.etapa) === 'RIESGOS' && !isRiesgosObservadoEditableSolicitud(solicitud));
+            const etapaNormalizada = normalizarEtapa(solicitud.etapa);
+            const isReadOnly = etapaNormalizada === 'DOCUMENTARIA'
+                || etapaNormalizada === 'OPERACIONES'
+                || solicitud.operacionesDesdeDocumentariaSolicitud === true
+                || (etapaNormalizada === 'RIESGOS' && !isRiesgosObservadoEditableSolicitud(solicitud));
 
             // Set read-only state for registration page elements
             applyRegistrationFormReadOnlyState(isReadOnly);
@@ -5526,6 +5892,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
             }
             toggleRegistroComentariosCards(isReadOnly, solicitud);
+            actualizarControlesDocumentariaSolicitud(solicitud);
+            actualizarRespuestaOperacionesSolicitud(solicitud);
             lockDatosClienteYConyugeRiesgosObservado(solicitud);
             renderChecklistTable();
             actualizarChecklistPorCarretera(carreteraSolicitud);
@@ -5540,7 +5908,8 @@ document.addEventListener('DOMContentLoaded', () => {
                     if (checkbox) checkbox.checked = true;
                 });
             } else {
-                document.getElementById('chkManualDni').checked = !!solicitud.chkManualDni;
+                const chkManualDni = document.getElementById('chkManualDni');
+                if (chkManualDni) chkManualDni.checked = !!solicitud.chkManualDni;
                 const chkManualRecibo = document.getElementById('chkManualRecibo');
                 const chkManualCotizacion = document.getElementById('chkManualCotizacion');
                 if (chkManualRecibo) chkManualRecibo.checked = !!solicitud.chkManualRecibo;
